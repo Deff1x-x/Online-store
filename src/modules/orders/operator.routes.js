@@ -5,6 +5,8 @@ import { ROLES } from '../../utils/roles.js';
 import {
   getOperatorOrders,
   pickOrder,
+  recordActualWeight,
+  updateDeliveryStatus,
 } from './operator.controller.js';
 
 const router = Router();
@@ -21,6 +23,20 @@ router.put(
   authenticateToken,
   authorizeRoles(ROLES.storeOperator),
   pickOrder,
+);
+
+router.put(
+  '/:id/status',
+  authenticateToken,
+  authorizeRoles(ROLES.storeOperator),
+  updateDeliveryStatus,
+);
+
+router.put(
+  '/:id/actual-weight',
+  authenticateToken,
+  authorizeRoles(ROLES.storeOperator),
+  recordActualWeight,
 );
 
 export default router;

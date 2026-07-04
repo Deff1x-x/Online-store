@@ -1,15 +1,23 @@
 import { AppError } from '../../utils/errors.js';
 import {
+  createOrderStatusHistory,
   findOperatorOrders,
   findOrderForUpdate,
-  findOrderItemsForPricing,
-  markOrderPicked,
+  updateOrderActualWeightAndTotals,
+  updateOrderDeliveryStatus,
   updateOrderItemActualWeight,
   withOperatorTransaction,
 } from './operator.repository.js';
 
-const allowedOrderStatuses = ['new', 'picked', 'in_delivery', 'delivered', 'canceled'];
-const onlinePaymentDiscountRate = 0.05;
+const deliveryStatuses = ['new', 'picked', 'in_delivery', 'delivered', 'failed'];
+const paymentStatuses = ['pending', 'online_paid', 'fully_paid', 'cancelled'];
+const allowedDeliveryTransitions = new Map([
+  ['new', ['picked', 'failed']],
+  ['picked', ['in_delivery', 'failed']],
+  ['in_delivery', ['delivered', 'failed']],
+  ['delivered', []],
+  ['failed', []],
+]);
 
 const roundMoney = (value) => {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
@@ -19,115 +27,220 @@ const getOperatorStoreId = (user) => {
   return user?.store_id;
 };
 
-export const getOperatorOrders = async ({ user, status }) => {
+const assertOperatorStore = (user) => {
   const operatorStoreId = getOperatorStoreId(user);
 
   if (!operatorStoreId) {
     throw new AppError(403, 'Operator must be assigned to a store', 'operator_store_required');
   }
 
-  if (status && !allowedOrderStatuses.includes(status)) {
-    throw new AppError(400, 'Invalid order status filter', 'invalid_order_status');
+  return operatorStoreId;
+};
+
+const assertOrderBelongsToOperator = (order, operatorStoreId) => {
+  if (!order) {
+    throw new AppError(404, 'Order was not found', 'order_not_found');
   }
+
+  if (String(order.store_id) !== String(operatorStoreId)) {
+    throw new AppError(
+      403,
+      'Operator can only manage orders from their assigned store',
+      'operator_store_mismatch',
+    );
+  }
+};
+
+const normalizeDeliveryStatus = (status) => {
+  if (!status) {
+    return undefined;
+  }
+
+  if (!deliveryStatuses.includes(status)) {
+    throw new AppError(400, 'Invalid delivery_status', 'invalid_delivery_status');
+  }
+
+  return status;
+};
+
+const normalizePaymentStatus = (status) => {
+  if (!status) {
+    return undefined;
+  }
+
+  if (!paymentStatuses.includes(status)) {
+    throw new AppError(400, 'Invalid payment_status', 'invalid_payment_status');
+  }
+
+  return status;
+};
+
+const assertDeliveryTransitionAllowed = (oldStatus, newStatus) => {
+  const allowedNextStatuses = allowedDeliveryTransitions.get(oldStatus) || [];
+
+  if (!allowedNextStatuses.includes(newStatus)) {
+    throw new AppError(
+      400,
+      `Delivery status transition ${oldStatus} -> ${newStatus} is not allowed`,
+      'invalid_delivery_status_transition',
+    );
+  }
+};
+
+export const getOperatorOrders = async ({
+  user,
+  delivery_date,
+  delivery_status,
+  payment_status,
+  status,
+}) => {
+  const operatorStoreId = assertOperatorStore(user);
+  const normalizedDeliveryStatus = normalizeDeliveryStatus(delivery_status || status);
+  const normalizedPaymentStatus = normalizePaymentStatus(payment_status);
 
   const orders = await findOperatorOrders({
     storeId: operatorStoreId,
-    status,
+    deliveryDate: delivery_date,
+    deliveryStatus: normalizedDeliveryStatus,
+    paymentStatus: normalizedPaymentStatus,
   });
 
   return { orders };
 };
 
-export const pickOrder = async ({ user, orderId, items }) => {
-  const operatorStoreId = getOperatorStoreId(user);
-
-  if (!operatorStoreId) {
-    throw new AppError(403, 'Operator must be assigned to a store', 'operator_store_required');
-  }
-
-  if (!Array.isArray(items) || items.length === 0) {
-    throw new AppError(400, 'Picked order items are required', 'picked_items_required');
-  }
+export const updateDeliveryStatus = async ({ user, orderId, deliveryStatus }) => {
+  const operatorStoreId = assertOperatorStore(user);
+  const normalizedDeliveryStatus = normalizeDeliveryStatus(deliveryStatus);
 
   return withOperatorTransaction(async (client) => {
     const order = await findOrderForUpdate(client, orderId);
+    assertOrderBelongsToOperator(order, operatorStoreId);
 
-    if (!order) {
-      throw new AppError(404, 'Order was not found', 'order_not_found');
-    }
+    assertDeliveryTransitionAllowed(order.delivery_status, normalizedDeliveryStatus);
 
-    if (order.store_id !== operatorStoreId) {
-      throw new AppError(
-        403,
-        'Operator can only manage orders from their assigned store',
-        'operator_store_mismatch',
-      );
-    }
+    const updatedOrder = await updateOrderDeliveryStatus({
+      client,
+      orderId: order.id,
+      deliveryStatus: normalizedDeliveryStatus,
+    });
 
-    for (const item of items) {
-      const { item_id, actual_weight } = item;
-      const parsedActualWeight = Number(actual_weight);
+    await createOrderStatusHistory({
+      client,
+      orderId: order.id,
+      oldStatus: order.delivery_status,
+      newStatus: normalizedDeliveryStatus,
+      changedBy: user.id,
+    });
 
-      if (!item_id || !Number.isFinite(parsedActualWeight) || parsedActualWeight <= 0) {
-        throw new AppError(
-          400,
-          'Each picked item must include item_id and a positive actual_weight',
-          'invalid_picked_item',
-        );
-      }
+    return {
+      message: 'Order delivery_status updated successfully',
+      order: updatedOrder,
+    };
+  });
+};
 
-      const updatedItem = await updateOrderItemActualWeight({
-        client,
-        orderId: order.id,
-        itemId: item_id,
-        actualWeight: parsedActualWeight,
-      });
+export const pickOrder = async ({ user, orderId, items }) => {
+  const operatorStoreId = assertOperatorStore(user);
 
-      if (!updatedItem) {
-        throw new AppError(
-          404,
-          `Order item ${item_id} was not found in this order`,
-          'order_item_not_found',
-        );
-      }
-    }
+  return withOperatorTransaction(async (client) => {
+    const order = await findOrderForUpdate(client, orderId);
+    assertOrderBelongsToOperator(order, operatorStoreId);
 
-    const orderItems = await findOrderItemsForPricing(client, order.id);
-    let recalculatedTotalPrice = 0;
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        const { item_id, actual_weight } = item;
+        const parsedActualWeight = Number(actual_weight);
 
-    for (const orderItem of orderItems) {
-      const pricePerUnit = Number(orderItem.price_per_unit);
-
-      if (orderItem.is_weighted) {
-        if (!orderItem.actual_weight) {
+        if (!item_id || !Number.isFinite(parsedActualWeight) || parsedActualWeight <= 0) {
           throw new AppError(
             400,
-            `Weighted order item ${orderItem.id} requires actual_weight before picking`,
-            'weighted_item_actual_weight_required',
+            'Each picked item must include item_id and a positive actual_weight',
+            'invalid_picked_item',
           );
         }
 
-        recalculatedTotalPrice += Number(orderItem.actual_weight) * pricePerUnit;
-      } else {
-        recalculatedTotalPrice += Number(orderItem.quantity) * pricePerUnit;
+        const updatedItem = await updateOrderItemActualWeight({
+          client,
+          orderId: order.id,
+          itemId: item_id,
+          actualWeight: parsedActualWeight,
+        });
+
+        if (!updatedItem) {
+          throw new AppError(
+            404,
+            `Order item ${item_id} was not found in this order`,
+            'order_item_not_found',
+          );
+        }
       }
     }
 
-    if (order.payment_method === 'online') {
-      recalculatedTotalPrice -= recalculatedTotalPrice * onlinePaymentDiscountRate;
-    }
+    assertDeliveryTransitionAllowed(order.delivery_status, 'picked');
 
-    const finalTotalPrice = roundMoney(recalculatedTotalPrice);
-    const pickedOrder = await markOrderPicked({
+    const pickedOrder = await updateOrderDeliveryStatus({
       client,
       orderId: order.id,
-      totalPrice: finalTotalPrice,
+      deliveryStatus: 'picked',
+    });
+
+    await createOrderStatusHistory({
+      client,
+      orderId: order.id,
+      oldStatus: order.delivery_status,
+      newStatus: 'picked',
+      changedBy: user.id,
     });
 
     return {
       message: 'Order picked successfully',
       order: pickedOrder,
-      items: orderItems,
+    };
+  });
+};
+
+export const recordActualWeight = async ({ user, orderId, actualWeight }) => {
+  const operatorStoreId = assertOperatorStore(user);
+  const parsedActualWeight = Number(actualWeight);
+
+  if (!Number.isFinite(parsedActualWeight) || parsedActualWeight <= 0) {
+    throw new AppError(400, 'actual_weight must be a positive number', 'invalid_actual_weight');
+  }
+
+  return withOperatorTransaction(async (client) => {
+    const order = await findOrderForUpdate(client, orderId);
+    assertOrderBelongsToOperator(order, operatorStoreId);
+
+    const estimatedWeight = Number(order.estimated_weight);
+    const subtotal = Number(order.subtotal ?? order.total_price);
+    const onlinePaymentAmount = Number(order.online_payment_amount || 0);
+
+    if (!Number.isFinite(estimatedWeight) || estimatedWeight <= 0) {
+      throw new AppError(
+        400,
+        'order.estimated_weight must be greater than 0 before recording actual_weight',
+        'invalid_order_estimated_weight',
+      );
+    }
+
+    if (!Number.isFinite(subtotal) || subtotal < 0) {
+      throw new AppError(400, 'Order subtotal is invalid', 'invalid_order_subtotal');
+    }
+
+    const finalTotal = roundMoney(subtotal * (parsedActualWeight / estimatedWeight));
+    const posTerminalTopup = roundMoney(Math.max(0, finalTotal - onlinePaymentAmount));
+
+    const updatedOrder = await updateOrderActualWeightAndTotals({
+      client,
+      orderId: order.id,
+      actualWeight: parsedActualWeight,
+      finalTotal,
+      posTerminalTopup,
+    });
+
+    return {
+      message: 'Order actual_weight recorded successfully',
+      order: updatedOrder,
     };
   });
 };

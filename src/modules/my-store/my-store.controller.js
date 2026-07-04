@@ -12,7 +12,7 @@ import {
 
 export const getOrders = async (request, response) => {
   try {
-    const result = await listStoreOrders({ user: request.user, status: request.query.status });
+    const result = await listStoreOrders({ user: request.user, query: request.query });
     return response.status(200).json(result);
   } catch (error) {
     return sendControllerError(response, error, 'Failed to fetch store orders');
