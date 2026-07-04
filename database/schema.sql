@@ -1,11 +1,11 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TYPE user_role AS ENUM (
-    'Customer',
-    'Store_Op',
-    'Admin_1_Catalog',
-    'Admin_2_Operations',
-    'Admin_3_Customers'
+    'customer',
+    'store_operator',
+    'admin_catalog',
+    'admin_operations',
+    'admin_customers'
 );
 
 CREATE TYPE store_status AS ENUM (
@@ -57,11 +57,11 @@ CREATE TABLE users (
     phone VARCHAR(32) UNIQUE,
     email VARCHAR(255) UNIQUE,
     password_hash TEXT,
-    role user_role NOT NULL DEFAULT 'Customer',
+    role user_role NOT NULL DEFAULT 'customer',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT users_contact_required CHECK (phone IS NOT NULL OR email IS NOT NULL),
-    CONSTRAINT customers_store_required CHECK (role <> 'Customer' OR store_id IS NOT NULL)
+    CONSTRAINT customers_store_required CHECK (role <> 'customer' OR store_id IS NOT NULL)
 );
 
 CREATE TABLE user_consents (

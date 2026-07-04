@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { normalizeRole } from './roles.js';
 
 const saltRounds = 12;
 
@@ -23,7 +24,7 @@ export const generateToken = (userPayload) => {
   // Keep the token payload intentionally small and free of sensitive fields.
   const tokenPayload = {
     id: userPayload.id,
-    role: userPayload.role,
+    role: normalizeRole(userPayload.role),
   };
 
   if (userPayload.store_id) {

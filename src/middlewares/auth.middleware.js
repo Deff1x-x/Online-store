@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { normalizeRole } from '../utils/roles.js';
 
 export const authenticateToken = (request, response, next) => {
   const authorizationHeader = request.headers.authorization;
@@ -27,7 +28,11 @@ export const authenticateToken = (request, response, next) => {
 
   try {
     // Verified token data becomes available for controllers and RBAC middleware.
-    request.user = jwt.verify(token, jwtSecret);
+    const verifiedUser = jwt.verify(token, jwtSecret);
+    request.user = {
+      ...verifiedUser,
+      role: normalizeRole(verifiedUser.role),
+    };
     return next();
   } catch (error) {
     return response.status(403).json({

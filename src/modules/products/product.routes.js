@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../../middlewares/auth.middleware.js';
 import { authorizeRoles } from '../../middlewares/role.middleware.js';
+import { ROLES } from '../../utils/roles.js';
 import {
   adminCreateProduct,
   adminLinkProductToStore,
@@ -12,14 +13,14 @@ const router = Router();
 router.post(
   '/',
   authenticateToken,
-  authorizeRoles('Admin_1_Catalog'),
+  authorizeRoles(ROLES.adminCatalog),
   adminCreateProduct,
 );
 
 router.post(
   '/link-store',
   authenticateToken,
-  authorizeRoles('Admin_1_Catalog'),
+  authorizeRoles(ROLES.adminCatalog),
   adminLinkProductToStore,
 );
 

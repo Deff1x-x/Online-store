@@ -4,7 +4,7 @@ import { hashPassword } from '../src/utils/auth.js';
 const adminUser = {
   email: 'catalog.admin@kairosime.com',
   password: 'AdminPassword123',
-  role: 'Admin_1_Catalog',
+  role: 'admin_catalog',
 };
 
 const starterStore = {
