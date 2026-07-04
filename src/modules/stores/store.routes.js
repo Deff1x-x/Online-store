@@ -6,10 +6,18 @@ import {
 import { authenticateToken } from '../../middlewares/auth.middleware.js';
 import { authorizeRoles } from '../../middlewares/role.middleware.js';
 import { ROLES } from '../../utils/roles.js';
+import { getStoreCoverage } from '../store-coverage/store-coverage.controller.js';
 
 const router = Router();
 
 router.get('/', getStores);
+
+router.get(
+  '/:store_id/coverage',
+  authenticateToken,
+  authorizeRoles(ROLES.customer, ROLES.storeOperator, ROLES.adminCatalog),
+  getStoreCoverage,
+);
 
 // Store creation is restricted to catalog administrators.
 router.post(
