@@ -1,6 +1,7 @@
 import { comparePassword, generateToken } from '../../utils/auth.js';
 import { AppError } from '../../utils/errors.js';
 import { normalizeUser, ROLES } from '../../utils/roles.js';
+import { ensureCustomerRecordForUser } from '../customers/customers.service.js';
 import {
   createCustomerWithConsent,
   findUserByEmail,
@@ -114,6 +115,8 @@ export const registerCustomer = async ({
     }
 
     const user = normalizeUser(result.user);
+    await ensureCustomerRecordForUser(user);
+
     const token = generateToken(user);
 
     return {
@@ -152,6 +155,8 @@ export const loginCustomer = async ({ phone, code }) => {
   if (user.role !== ROLES.customer) {
     throw new AppError(403, 'Only customers can log in through phone OTP', 'invalid_login_channel');
   }
+
+  await ensureCustomerRecordForUser(user);
 
   const token = generateToken(user);
 
