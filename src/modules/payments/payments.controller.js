@@ -25,7 +25,8 @@ export const getPayment = async (request, response) => {
 
 export const payOrderOnline = async (request, response) => {
   try {
-    const result = await initiateOrderPayment({ user: request.user, orderId: request.params.orderId, body: request.body });
+    const orderId = request.params.id || request.params.orderId;
+    const result = await initiateOrderPayment({ user: request.user, orderId, body: request.body });
     return response.status(201).json(result);
   } catch (error) {
     return sendControllerError(response, error, 'Failed to initiate online payment');

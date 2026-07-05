@@ -10,12 +10,14 @@ import myOrdersRoutes from './modules/my-orders/my-orders.routes.js';
 import myAddressesRoutes from './modules/my-addresses/my-addresses.routes.js';
 import myStoreRoutes from './modules/my-store/my-store.routes.js';
 import paymentRoutes from './modules/payments/payments.routes.js';
+import adminPaymentRoutes from './modules/payments/admin-payments.routes.js';
 import promocodeRoutes from './modules/promocodes/promocodes.routes.js';
 import subscriptionRoutes from './modules/subscriptions/subscriptions.routes.js';
 import notificationRoutes from './modules/notifications/notifications.routes.js';
 import adminCatalogRoutes from './modules/admin/catalog/catalog.routes.js';
 import adminCustomersRoutes from './modules/admin/customers/customers.routes.js';
 import adminOperationsRoutes from './modules/admin/operations/operations.routes.js';
+import kaspiWebhookRoutes from './modules/webhooks/kaspi.routes.js';
 
 const app = express();
 
@@ -37,7 +39,9 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin/catalog', adminCatalogRoutes);
 app.use('/api/admin/customers', adminCustomersRoutes);
+app.use('/api/admin/payments', adminPaymentRoutes);
 app.use('/api/admin/operations', adminOperationsRoutes);
+app.use('/webhooks/kaspi', kaspiWebhookRoutes);
 
 app.get('/api/health', (request, response) => {
   response.status(200).json({
