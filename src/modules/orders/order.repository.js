@@ -245,3 +245,26 @@ export const createOrderItem = async ({
 
   return result.rows[0];
 };
+
+export const findCustomerOrderPricingScope = async (client, { orderId, userId }) => {
+  const result = await client.query(
+    `SELECT
+       orders.id,
+       orders.store_id,
+       orders.customer_id,
+       orders.customer_record_id,
+       customers.user_id AS customer_user_id,
+       orders.subtotal
+     FROM orders
+     LEFT JOIN customers ON customers.id = orders.customer_record_id
+     WHERE orders.id = $1
+       AND (
+         orders.customer_id = $2
+         OR customers.user_id = $2
+       )
+     LIMIT 1`,
+    [orderId, userId],
+  );
+
+  return result.rows[0] || null;
+};

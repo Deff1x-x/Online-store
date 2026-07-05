@@ -8,8 +8,19 @@ import {
   findCustomerById,
   findCustomerRecordForUser,
   findDeliveryAddressForOrder,
+  findCustomerOrderPricingScope,
   withOrderTransaction,
 } from './order.repository.js';
+import { calculateDeliveryFee } from './delivery-settings.service.js';
+import {
+  applyFirstOrderDiscount,
+  getApplicableFirstOrderDiscount,
+  hasFirstOrderDiscountForOrder,
+} from './first-order-discounts.service.js';
+import {
+  applyPromoCodeUsage,
+  validatePromoCodeForCustomer,
+} from './promo-codes.service.js';
 
 const onlinePaymentDiscountRate = 0.05;
 
@@ -27,12 +38,35 @@ const createOrderNumber = () => {
   return `ORD-${datePart}-${suffix}`;
 };
 
+const validateDiscountAmount = ({ discountAmount, subtotal }) => {
+  const amount = roundMoney(discountAmount);
+
+  if (!Number.isFinite(amount) || amount < 0 || amount > subtotal) {
+    throw new AppError(
+      400,
+      'Discount amount exceeds order subtotal.',
+      'discount_amount_exceeds_order_subtotal',
+    );
+  }
+
+  return amount;
+};
+
+const throwDiscountStackingPolicyError = () => {
+  throw new AppError(
+    400,
+    'Promo code cannot be combined with first order discount until discount stacking policy is defined.',
+    'discount_stacking_policy_undefined',
+  );
+};
+
 export const createOrder = async ({
   user,
   payment_method,
   delivery_address_id,
   delivery_date,
   delivery_time_slot,
+  promo_code,
   items,
 }) => {
   const customerId = user?.id;
@@ -200,11 +234,61 @@ export const createOrder = async ({
 
     const subtotalAmount = roundMoney(subtotal);
     const estimatedWeight = estimatedWeightTotal > 0 ? roundWeight(estimatedWeightTotal) : null;
+    const firstOrderDiscountResult = await getApplicableFirstOrderDiscount(client, {
+      customerRecordId: customerRecord.id,
+      storeId: customer.store_id,
+      userId: customer.id,
+      subtotal: subtotalAmount,
+    });
+    const firstOrderDiscount = validateDiscountAmount({
+      discountAmount: firstOrderDiscountResult.discountAmount,
+      subtotal: subtotalAmount,
+    });
+    let remainingAfterDiscounts = roundMoney(subtotalAmount - firstOrderDiscount);
+    let promoDiscount = 0;
+    let appliedPromoCode = null;
+
+    if (promo_code) {
+      if (firstOrderDiscount > 0) {
+        throwDiscountStackingPolicyError();
+      }
+
+      const promoValidation = await validatePromoCodeForCustomer(client, {
+        customerRecordId: customerRecord.id,
+        storeId: customer.store_id,
+        promoCode: promo_code,
+        orderTotal: subtotalAmount,
+        lock: true,
+      });
+
+      if (!promoValidation.is_valid) {
+        throw new AppError(400, promoValidation.error_message, 'invalid_promo_code');
+      }
+
+      promoDiscount = validateDiscountAmount({
+        discountAmount: promoValidation.discount_amount,
+        subtotal: subtotalAmount,
+      });
+      remainingAfterDiscounts = roundMoney(remainingAfterDiscounts - promoDiscount);
+      appliedPromoCode = promoValidation.promoCode;
+    }
+
+    const { deliveryFee } = await calculateDeliveryFee(client, {
+      storeId: customer.store_id,
+      subtotal: subtotalAmount,
+    });
+    const finalTotal = roundMoney(remainingAfterDiscounts + deliveryFee);
     const onlinePaymentAmount = payment_method === 'online'
-      ? roundMoney(subtotalAmount * (1 - onlinePaymentDiscountRate))
+      ? roundMoney(finalTotal * (1 - onlinePaymentDiscountRate))
       : 0;
-    const finalTotal = subtotalAmount;
     const paymentStatus = 'pending';
+    const breakdown = {
+      subtotal: subtotalAmount,
+      first_order_discount: firstOrderDiscount,
+      promo_discount: promoDiscount,
+      delivery_fee: deliveryFee,
+      final_total: finalTotal,
+    };
 
     const order = await createOrderRecord({
       client,
@@ -244,12 +328,96 @@ export const createOrder = async ({
       });
     }
 
+    await applyFirstOrderDiscount(client, {
+      discount: firstOrderDiscountResult.discount,
+      orderId: order.id,
+    });
+
+    await applyPromoCodeUsage(client, {
+      promoCode: appliedPromoCode,
+      customerRecordId: customerRecord.id,
+      orderId: order.id,
+      discountAmount: promoDiscount,
+    });
+
     return {
       message: 'Order created successfully',
+      order_id: order.id,
+      order_number: order.order_number,
+      payment_options: {
+        online: {
+          amount: roundMoney(finalTotal * (1 - onlinePaymentDiscountRate)),
+        },
+        pos: {
+          amount: finalTotal,
+        },
+      },
+      breakdown,
       order: {
         ...order,
         items: createdItems,
+        breakdown,
       },
+    };
+  });
+};
+
+export const validatePromoForOrder = async ({
+  user,
+  orderId,
+  promo_code,
+  order_total,
+}) => {
+  if (!user?.id) {
+    throw new AppError(401, 'Authenticated customer is required', 'customer_auth_required');
+  }
+
+  if (!orderId) {
+    throw new AppError(400, 'order_id is required', 'order_id_required');
+  }
+
+  return withOrderTransaction(async (client) => {
+    const order = await findCustomerOrderPricingScope(client, {
+      orderId,
+      userId: user.id,
+    });
+
+    if (!order) {
+      throw new AppError(404, 'Order was not found', 'order_not_found');
+    }
+
+    if (!order.customer_record_id) {
+      throw new AppError(400, 'Order is not linked to a customer record', 'customer_record_required');
+    }
+
+    if (await hasFirstOrderDiscountForOrder(client, order.id)) {
+      throwDiscountStackingPolicyError();
+    }
+
+    const orderTotal = order_total === undefined || order_total === null
+      ? Number(order.subtotal)
+      : Number(order_total);
+
+    if (!Number.isFinite(orderTotal) || orderTotal < 0) {
+      throw new AppError(400, 'order_total must be a non-negative number', 'invalid_order_total');
+    }
+
+    const validation = await validatePromoCodeForCustomer(client, {
+      customerRecordId: order.customer_record_id,
+      storeId: order.store_id,
+      promoCode: promo_code,
+      orderTotal,
+    });
+
+    return {
+      is_valid: validation.is_valid,
+      discount_amount: validation.is_valid
+        ? validateDiscountAmount({
+          discountAmount: validation.discount_amount,
+          subtotal: orderTotal,
+        })
+        : 0,
+      error_message: validation.error_message,
     };
   });
 };
