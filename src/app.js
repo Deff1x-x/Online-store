@@ -4,6 +4,7 @@ import authRoutes from './modules/auth/auth.routes.js';
 import myStoreRoutes from './modules/my-store/my-store.routes.js';
 import { myOrdersRoutes, ordersRoutes } from './modules/orders/orders.routes.js';
 import productRoutes from './modules/products/products.routes.js';
+import promocodeRoutes from './modules/promocodes/promocodes.routes.js';
 import subscriptionRoutes from './modules/subscriptions/subscriptions.routes.js';
 import { AppError } from './utils/AppError.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -18,6 +19,7 @@ app.use('/api/my-store', myStoreRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/my-orders', myOrdersRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/promocodes', promocodeRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 
 app.get('/api/health', (request, response) => {

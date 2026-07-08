@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken } from '../../middlewares/auth.middleware.js';
-import { authorizeRoles } from '../../middlewares/role.middleware.js';
+import { authenticateToken, authorizeRoles } from '../../middleware/auth.js';
 import { ROLES } from '../../utils/roles.js';
 import {
   createPromoCode,
@@ -11,7 +10,7 @@ import {
 const router = Router();
 
 router.post('/validate', authenticateToken, authorizeRoles(ROLES.customer), validatePromoCode);
-router.get('/', authenticateToken, authorizeRoles(ROLES.adminCatalog, ROLES.adminOperations), getPromoCodes);
+router.get('/', authenticateToken, authorizeRoles(ROLES.adminCatalog), getPromoCodes);
 router.post('/', authenticateToken, authorizeRoles(ROLES.adminCatalog), createPromoCode);
 
 export default router;

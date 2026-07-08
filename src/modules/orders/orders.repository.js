@@ -107,7 +107,7 @@ export const findPromoCodeForOrder = async (client, code) => {
   const result = await client.query(
     `SELECT *
      FROM promo_codes
-     WHERE lower(code) = lower($1)
+     WHERE code = upper($1)
      FOR UPDATE`,
     [code],
   );
