@@ -55,6 +55,7 @@ CREATE TYPE user_status AS ENUM (
 
 CREATE TYPE store_status AS ENUM (
     'active',
+    'inactive',
     'paused',
     'closed'
 );
@@ -150,6 +151,7 @@ CREATE TABLE stores (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     address TEXT NOT NULL,
+    location VARCHAR(500),
     operating_hours VARCHAR(100),
     delivery_time_min INT,
     delivery_time_max INT,

@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import adminCatalogRoutes from './modules/admin/catalog/admin-catalog.routes.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import myStoreRoutes from './modules/my-store/my-store.routes.js';
 import { myOrdersRoutes, ordersRoutes } from './modules/orders/orders.routes.js';
@@ -14,6 +15,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use('/api/admin/catalog', adminCatalogRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/my-store', myStoreRoutes);
 app.use('/api/orders', ordersRoutes);
