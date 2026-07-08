@@ -1,37 +1,22 @@
-import { Route, Routes } from "react-router-dom";
-import {
-  Body,
-  ClientLayout,
-  EmptyState,
-  H1,
-  PageContainer,
-  ThemeProvider,
-} from "@koz/ui";
-
-function FoundationShell() {
-  return (
-    <ThemeProvider>
-      <ClientLayout>
-        <PageContainer>
-          <EmptyState
-            title="Frontend foundation"
-            description="Client app is ready for feature screens."
-            action={
-              <Body tone="muted">
-                UI tokens, layouts, and shared components are loaded.
-              </Body>
-            }
-          />
-        </PageContainer>
-      </ClientLayout>
-    </ThemeProvider>
-  );
-}
+import { Navigate, Route, Routes } from "react-router-dom";
+import { CartProvider } from "./cart/cart-context";
+import { AppLayout } from "./components/AppLayout";
+import { CartPage } from "./pages/CartPage";
+import { HomePage } from "./pages/HomePage";
+import { ShopPage } from "./pages/ShopPage";
+import "./styles.css";
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="*" element={<FoundationShell />} />
-    </Routes>
+    <CartProvider>
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/shop" element={<ShopPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </CartProvider>
   );
 }
