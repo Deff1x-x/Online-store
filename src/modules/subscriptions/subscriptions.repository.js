@@ -139,7 +139,7 @@ export const renewSubscriptionForCustomer = async ({ customerId, expiresAt }) =>
       const updatedResult = await client.query(
         `UPDATE subscriptions
          SET status = 'active',
-             expires_at = $2,
+             expires_at = $2::timestamptz,
              next_billing_date = $2::date,
              auto_renew = TRUE,
              cancelled_at = NULL,
