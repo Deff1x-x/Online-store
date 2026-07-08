@@ -78,8 +78,8 @@ INSERT INTO products (
         'Помидоры розовые',
         'vegetables',
         'kg',
-        950.00,
-        850.00,
+        426.00,
+        380.00,
         TRUE,
         TRUE
     ),
@@ -98,8 +98,8 @@ INSERT INTO products (
         'Молоко 3,2% 1 л',
         'dairy',
         'pcs',
-        520.00,
-        460.00,
+        462.00,
+        410.00,
         FALSE,
         TRUE
     ),

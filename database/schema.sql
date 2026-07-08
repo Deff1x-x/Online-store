@@ -282,6 +282,8 @@ CREATE TABLE orders (
     pos_terminal_topup NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (pos_terminal_topup >= 0),
     final_total NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (final_total >= 0),
     fulfillment_window fulfillment_window NOT NULL DEFAULT 'same_day',
+    delivery_date DATE,
+    delivery_time_slot VARCHAR(50),
     delivery_status delivery_status NOT NULL DEFAULT 'new',
     payment_status order_payment_status NOT NULL DEFAULT 'pending',
     delivered_at TIMESTAMPTZ,
