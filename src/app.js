@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './modules/auth/auth.routes.js';
+import productRoutes from './modules/products/products.routes.js';
 import subscriptionRoutes from './modules/subscriptions/subscriptions.routes.js';
 import { AppError } from './utils/AppError.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -11,6 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 
 app.get('/api/health', (request, response) => {
