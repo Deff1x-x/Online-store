@@ -222,7 +222,7 @@ export const createOrder = async ({ user, body }) => {
 
       const pricePerUnit = roundMoney(product.effective_price);
       const lineTotal = roundMoney(quantity * pricePerUnit);
-      const itemEstimatedWeight = roundQuantity(quantity);
+      const itemEstimatedWeight = product.is_weighted === true ? roundQuantity(quantity) : 0;
 
       subtotal = roundMoney(subtotal + lineTotal);
       estimatedWeight = roundQuantity(estimatedWeight + itemEstimatedWeight);

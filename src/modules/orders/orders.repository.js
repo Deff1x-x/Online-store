@@ -182,6 +182,7 @@ export const insertOrder = async (client, {
        online_payment_amount,
        pos_terminal_topup,
        final_total,
+       total_price,
        fulfillment_window,
        delivery_date,
        delivery_time_slot,
@@ -190,7 +191,7 @@ export const insertOrder = async (client, {
      )
      VALUES (
        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-       $11, $12, $13, $14, 'new', 'pending'
+       $11, $11, $12, $13, $14, 'new', 'pending'
      )
      RETURNING *`,
     [

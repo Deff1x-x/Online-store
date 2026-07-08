@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './modules/auth/auth.routes.js';
+import myStoreRoutes from './modules/my-store/my-store.routes.js';
 import { myOrdersRoutes, ordersRoutes } from './modules/orders/orders.routes.js';
 import productRoutes from './modules/products/products.routes.js';
 import subscriptionRoutes from './modules/subscriptions/subscriptions.routes.js';
@@ -13,6 +14,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+app.use('/api/my-store', myStoreRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/my-orders', myOrdersRoutes);
 app.use('/api/products', productRoutes);
