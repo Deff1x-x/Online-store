@@ -1,0 +1,16 @@
+{
+  "name": "@koz/staff",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --host 0.0.0.0 --port 5174",
+    "preview": "vite preview --host 0.0.0.0 --port 4174"
+  },
+  "dependencies": {
+    "@koz/api": "0.1.0",
+    "@koz/ui": "0.1.0"
+  },
+  "devDependencies": {}
+}

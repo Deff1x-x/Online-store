@@ -2,14 +2,22 @@
   "name": "multi-tenant-ecommerce-backend",
   "version": "1.0.0",
   "description": "Node.js Express backend for a multi-tenant e-commerce platform.",
+  "private": true,
   "type": "module",
   "main": "src/server.js",
+  "workspaces": [
+    "apps/client",
+    "apps/staff",
+    "packages/api",
+    "packages/ui"
+  ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "build": "npm run build --workspaces --if-present",
     "db:schema": "psql -f database/schema.sql",
     "db:seed": "psql -f database/seed.sql"
   },
@@ -19,7 +27,18 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.468.0",
     "pg": "^8.13.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
     "uuid": "^11.0.5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
   }
 }
