@@ -1,11 +1,13 @@
-export type ApiFoundationConfig = {
-  baseUrl: string;
-};
-
-export const DEFAULT_API_BASE_URL = "http://localhost:3000/api";
-
-export function createApiFoundationConfig(
-  baseUrl = DEFAULT_API_BASE_URL,
-): ApiFoundationConfig {
-  return { baseUrl };
-}
+export * from "./client";
+export * from "./config";
+export * from "./errors";
+export * from "./storage";
+export * from "./auth-manager";
+export * from "./provider";
+export * from "./contexts/auth-context";
+export * from "./contexts/modal-context";
+export * from "./contexts/theme-context";
+export * from "./contexts/toast-context";
+export * from "./hooks";
+export * from "./modules";
+export * from "./utils";
