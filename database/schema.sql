@@ -217,8 +217,8 @@ CREATE TABLE customers (
     phone VARCHAR(32) NOT NULL,
     email VARCHAR(255),
     subscription_status subscription_status NOT NULL DEFAULT 'expired',
-    subscription_start DATE,
-    subscription_end DATE,
+    subscription_start_date DATE,
+    subscription_end_date DATE,
     subscription_auto_renew BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -321,6 +321,7 @@ CREATE TABLE subscriptions (
     expires_at TIMESTAMPTZ,
     next_billing_date DATE,
     auto_renew BOOLEAN NOT NULL DEFAULT TRUE,
+    cancelled_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

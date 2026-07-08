@@ -1,22 +1,30 @@
-import { comparePassword, generateToken } from '../../utils/auth.js';
-import { AppError } from '../../utils/errors.js';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+import { env } from '../../config/env.js';
+import { comparePassword } from '../../utils/auth.js';
+import { AppError } from '../../utils/AppError.js';
 import { normalizeUser, ROLES } from '../../utils/roles.js';
-import { ensureCustomerRecordForUser } from '../customers/customers.service.js';
 import {
-  createCustomerWithConsent,
-  findUserByEmail,
-  findUserByPhone,
+  createCustomerRegistration,
+  createUserSession,
+  findCustomerUserByPhone,
+  findStaffUserByEmail,
+  rotateRefreshSession,
 } from './auth.repository.js';
 
 const otpStorage = new Map();
-const otpLifetimeMilliseconds = 5 * 60 * 1000;
+const otpLifetimeSeconds = 300;
+const otpLifetimeMilliseconds = otpLifetimeSeconds * 1000;
+const refreshTokenLifetimeDays = 30;
+
+const normalizePhone = (phone) => String(phone || '').trim();
 
 const generateOtpCode = () => {
   if (process.env.NODE_ENV === 'test') {
     return '1234';
   }
 
-  return String(Math.floor(1000 + Math.random() * 9000));
+  return String(crypto.randomInt(0, 10000)).padStart(4, '0');
 };
 
 const saveOtpCode = (phone, code) => {
@@ -38,7 +46,7 @@ const verifyOtpCode = (phone, code) => {
     return false;
   }
 
-  if (storedOtp.code !== code) {
+  if (storedOtp.code !== String(code)) {
     return false;
   }
 
@@ -46,125 +54,163 @@ const verifyOtpCode = (phone, code) => {
   return true;
 };
 
+const publicUser = (user) => {
+  const normalizedUser = normalizeUser(user);
+
+  return {
+    id: normalizedUser.id,
+    phone: normalizedUser.phone,
+    email: normalizedUser.email,
+    name: normalizedUser.name,
+    store_id: normalizedUser.store_id,
+    role: normalizedUser.role,
+    customer_id: normalizedUser.customer_id,
+    subscription_status: normalizedUser.subscription_status,
+  };
+};
+
+const createAccessToken = (user) => {
+  const tokenPayload = {
+    id: user.id,
+    role: user.role,
+  };
+
+  if (user.store_id) {
+    tokenPayload.store_id = user.store_id;
+  }
+
+  if (user.customer_id) {
+    tokenPayload.customer_id = user.customer_id;
+  }
+
+  if (user.email) {
+    tokenPayload.email = user.email;
+  }
+
+  if (user.phone) {
+    tokenPayload.phone = user.phone;
+  }
+
+  return jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: '15m' });
+};
+
+const generateRefreshToken = () => crypto.randomBytes(48).toString('base64url');
+
+const hashRefreshToken = (refreshToken) => {
+  return crypto.createHash('sha256').update(refreshToken).digest('hex');
+};
+
+const refreshTokenExpiresAt = () => {
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + refreshTokenLifetimeDays);
+  return expiresAt;
+};
+
+const issueCustomerTokens = async ({ user, userAgent, ipAddress }) => {
+  const safeUser = publicUser(user);
+  const token = createAccessToken(safeUser);
+  const refreshToken = generateRefreshToken();
+
+  await createUserSession({
+    userId: safeUser.id,
+    refreshTokenHash: hashRefreshToken(refreshToken),
+    userAgent,
+    ipAddress,
+    expiresAt: refreshTokenExpiresAt(),
+  });
+
+  return {
+    token,
+    refresh_token: refreshToken,
+    user: safeUser,
+  };
+};
+
 export const createOtpChallenge = ({ phone }) => {
-  if (!phone) {
+  const normalizedPhone = normalizePhone(phone);
+
+  if (!normalizedPhone) {
     throw new AppError(400, 'Phone number is required', 'phone_required');
   }
 
   const code = generateOtpCode();
-  saveOtpCode(phone, code);
+  saveOtpCode(normalizedPhone, code);
 
-  console.log(`SMS OTP for ${phone}: ${code}`);
+  console.log(`SMS OTP for ${normalizedPhone}: ${code}`);
 
   return {
     message: 'OTP code has been sent',
-    expires_in_seconds: otpLifetimeMilliseconds / 1000,
+    expires_in_seconds: otpLifetimeSeconds,
   };
 };
 
 export const registerCustomer = async ({
   phone,
   code,
-  email,
   name,
   store_id,
   privacy_policy,
   terms_of_service,
-  ip_address,
-  clientIp,
+  ipAddress,
+  userAgent,
 }) => {
-  if (!phone || !code || !name || !store_id) {
-    throw new AppError(
-      400,
-      'Phone, OTP code, name and store_id are required',
-      'customer_registration_required_fields',
-    );
-  }
+  const normalizedPhone = normalizePhone(phone);
 
   if (privacy_policy !== true || terms_of_service !== true) {
-    throw new AppError(
-      400,
-      'Privacy policy and terms of service consents are required',
-      'consents_required',
-    );
+    throw new AppError(400, 'Privacy policy and terms of service consents are required', 'consents_required');
   }
 
-  if (!verifyOtpCode(phone, code)) {
+  if (!normalizedPhone || !code || !name || !store_id) {
+    throw new AppError(400, 'Phone, OTP code, name and store_id are required', 'registration_required_fields');
+  }
+
+  if (!verifyOtpCode(normalizedPhone, code)) {
     throw new AppError(403, 'Invalid or expired OTP code', 'invalid_otp');
   }
 
-  const consentIpAddress = ip_address || clientIp || '0.0.0.0';
-
   try {
-    const result = await createCustomerWithConsent({
-      phone,
-      email,
+    const result = await createCustomerRegistration({
+      phone: normalizedPhone,
       name,
       storeId: store_id,
       privacyPolicy: privacy_policy,
       termsOfService: terms_of_service,
-      ipAddress: consentIpAddress,
+      ipAddress,
+      userAgent,
     });
 
     if (result.storeNotFound) {
-      throw new AppError(
-        400,
-        'Selected store does not exist or is not active',
-        'store_not_active',
-      );
+      throw new AppError(400, 'Selected store does not exist or is not active', 'store_not_active');
     }
 
-    const user = normalizeUser(result.user);
-    await ensureCustomerRecordForUser(user);
-
-    const token = generateToken(user);
-
-    return {
-      message: 'Customer registered successfully',
-      token,
-      user,
-    };
+    return issueCustomerTokens({ user: result.user, userAgent, ipAddress });
   } catch (error) {
     if (error.code === '23505') {
-      throw new AppError(
-        409,
-        'User with this phone or email already exists',
-        'duplicate_user_contact',
-      );
+      throw new AppError(409, 'User with this phone already exists', 'duplicate_user_contact');
     }
 
     throw error;
   }
 };
 
-export const loginCustomer = async ({ phone, code }) => {
-  if (!phone || !code) {
+export const loginCustomer = async ({ phone, code, ipAddress, userAgent }) => {
+  const normalizedPhone = normalizePhone(phone);
+
+  if (!normalizedPhone || !code) {
     throw new AppError(400, 'Phone and OTP code are required', 'login_required_fields');
   }
 
-  if (!verifyOtpCode(phone, code)) {
+  if (!verifyOtpCode(normalizedPhone, code)) {
     throw new AppError(403, 'Invalid or expired OTP code', 'invalid_otp');
   }
 
-  const user = normalizeUser(await findUserByPhone(phone));
+  const user = normalizeUser(await findCustomerUserByPhone(normalizedPhone));
 
-  if (!user) {
+  if (!user || user.role !== ROLES.customer) {
     throw new AppError(404, 'Customer was not found', 'customer_not_found');
   }
 
-  if (user.role !== ROLES.customer) {
-    throw new AppError(403, 'Only customers can log in through phone OTP', 'invalid_login_channel');
-  }
-
-  await ensureCustomerRecordForUser(user);
-
-  const token = generateToken(user);
-
-  return {
-    message: 'Customer logged in successfully',
-    token,
-    user,
-  };
+  return issueCustomerTokens({ user, userAgent, ipAddress });
 };
 
 export const loginStaff = async ({ email, password }) => {
@@ -172,14 +218,10 @@ export const loginStaff = async ({ email, password }) => {
     throw new AppError(400, 'Email and password are required', 'staff_login_required_fields');
   }
 
-  const user = normalizeUser(await findUserByEmail(email));
+  const user = normalizeUser(await findStaffUserByEmail(email));
 
-  if (!user) {
+  if (!user || user.role === ROLES.customer) {
     throw new AppError(401, 'Invalid email or password', 'invalid_credentials');
-  }
-
-  if (user.role === ROLES.customer) {
-    throw new AppError(403, 'Customers must log in through phone OTP', 'invalid_login_channel');
   }
 
   if (!user.password_hash) {
@@ -192,20 +234,43 @@ export const loginStaff = async ({ email, password }) => {
     throw new AppError(401, 'Invalid email or password', 'invalid_credentials');
   }
 
-  const staffUser = {
-    id: user.id,
-    phone: user.phone,
-    email: user.email,
-    name: user.name,
-    store_id: user.store_id,
-    role: user.role,
-  };
-
-  const token = generateToken(staffUser);
+  const safeUser = publicUser(user);
 
   return {
-    message: 'Staff user logged in successfully',
-    token,
-    user: staffUser,
+    token: createAccessToken(safeUser),
+    user: {
+      id: safeUser.id,
+      email: safeUser.email,
+      name: safeUser.name,
+      role: safeUser.role,
+      store_id: safeUser.store_id,
+    },
+  };
+};
+
+export const refreshTokens = async ({ refresh_token, ipAddress, userAgent }) => {
+  if (!refresh_token) {
+    throw new AppError(400, 'Refresh token is required', 'refresh_token_required');
+  }
+
+  const newRefreshToken = generateRefreshToken();
+  const user = await rotateRefreshSession({
+    refreshTokenHash: hashRefreshToken(refresh_token),
+    newRefreshTokenHash: hashRefreshToken(newRefreshToken),
+    userAgent,
+    ipAddress,
+    expiresAt: refreshTokenExpiresAt(),
+  });
+
+  if (!user) {
+    throw new AppError(401, 'Invalid or expired refresh token', 'invalid_refresh_token');
+  }
+
+  const safeUser = publicUser(user);
+
+  return {
+    token: createAccessToken(safeUser),
+    refresh_token: newRefreshToken,
+    user: safeUser,
   };
 };

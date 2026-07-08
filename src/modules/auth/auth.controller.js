@@ -1,47 +1,67 @@
-import { sendControllerError } from '../../utils/http.js';
 import {
+  createOtpChallenge,
   loginCustomer as loginCustomerService,
   loginStaff as loginStaffService,
+  refreshTokens,
   registerCustomer as registerCustomerService,
-  createOtpChallenge,
 } from './auth.service.js';
 
-export const sendOTP = async (request, response) => {
+export const sendOtp = async (request, response, next) => {
   try {
     const result = createOtpChallenge(request.body);
     return response.status(200).json(result);
   } catch (error) {
-    return sendControllerError(response, error, 'Failed to send OTP code');
+    return next(error);
   }
 };
 
-export const registerCustomer = async (request, response) => {
+export const registerCustomer = async (request, response, next) => {
   try {
     const result = await registerCustomerService({
       ...request.body,
-      clientIp: request.ip,
+      ipAddress: request.ip,
+      userAgent: request.get('user-agent'),
     });
 
     return response.status(201).json(result);
   } catch (error) {
-    return sendControllerError(response, error, 'Failed to register customer');
+    return next(error);
   }
 };
 
-export const loginCustomer = async (request, response) => {
+export const loginCustomer = async (request, response, next) => {
   try {
-    const result = await loginCustomerService(request.body);
+    const result = await loginCustomerService({
+      ...request.body,
+      ipAddress: request.ip,
+      userAgent: request.get('user-agent'),
+    });
+
     return response.status(200).json(result);
   } catch (error) {
-    return sendControllerError(response, error, 'Failed to log in customer');
+    return next(error);
   }
 };
 
-export const loginStaff = async (request, response) => {
+export const loginStaff = async (request, response, next) => {
   try {
     const result = await loginStaffService(request.body);
     return response.status(200).json(result);
   } catch (error) {
-    return sendControllerError(response, error, 'Failed to log in staff user');
+    return next(error);
+  }
+};
+
+export const refresh = async (request, response, next) => {
+  try {
+    const result = await refreshTokens({
+      ...request.body,
+      ipAddress: request.ip,
+      userAgent: request.get('user-agent'),
+    });
+
+    return response.status(200).json(result);
+  } catch (error) {
+    return next(error);
   }
 };
