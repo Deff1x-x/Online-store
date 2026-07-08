@@ -6,6 +6,11 @@ export type OtpPayload = {
   phone: string;
 };
 
+export type OtpResponse = {
+  message: string;
+  expires_in_seconds: number;
+};
+
 export type RegisterCustomerPayload = {
   phone: string;
   code: string;
@@ -17,7 +22,7 @@ export type RegisterCustomerPayload = {
 
 export function createAuthApi(client: ApiClient) {
   return {
-    sendOtp: (payload: OtpPayload) => client.post<ApiRecord, OtpPayload>("/auth/otp", payload, { auth: false }),
+    sendOtp: (payload: OtpPayload) => client.post<OtpResponse, OtpPayload>("/auth/otp", payload, { auth: false }),
     registerPhone: (payload: OtpPayload) =>
       client.post<ApiRecord, OtpPayload>("/auth/register-phone", payload, { auth: false }),
     register: (payload: RegisterCustomerPayload) =>

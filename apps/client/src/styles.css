@@ -8,6 +8,8 @@
   --client-icon-control-size: 40px;
   --client-progress-height: 8px;
   --client-hero-min-height: 680px;
+  --client-auth-card-width: 520px;
+  --client-otp-letter-spacing: 12px;
 }
 
 body {
@@ -470,6 +472,89 @@ a {
   gap: var(--koz-space-1);
 }
 
+.auth-page-shell {
+  min-height: 100vh;
+  background: var(--koz-color-panel);
+}
+
+.auth-page-shell .koz-auth-layout {
+  min-height: calc(100vh - var(--client-header-height));
+  padding: var(--koz-space-6) var(--koz-space-3);
+}
+
+.auth-card {
+  display: grid;
+  width: min(100%, var(--client-auth-card-width));
+  gap: var(--koz-space-4);
+  border-color: var(--koz-color-muted);
+  background: var(--koz-color-panel-2);
+  padding: var(--koz-space-5);
+}
+
+.auth-card__heading {
+  display: grid;
+  gap: var(--koz-space-1);
+}
+
+.auth-card__heading .koz-h1,
+.auth-card__heading p {
+  margin: 0;
+}
+
+.auth-card__heading p {
+  color: var(--koz-color-muted);
+}
+
+.auth-kicker {
+  color: var(--koz-color-acid-deep);
+  font-size: var(--koz-font-size-1);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.auth-form {
+  display: grid;
+  gap: var(--koz-space-3);
+}
+
+.consent-list {
+  display: grid;
+  gap: var(--koz-space-2);
+}
+
+.consent-list .koz-choice {
+  align-items: flex-start;
+}
+
+.auth-switch {
+  margin: 0;
+  color: var(--koz-color-muted);
+  text-align: center;
+}
+
+.auth-switch a {
+  color: var(--koz-color-acid-deep);
+  font-weight: 800;
+}
+
+.otp-input {
+  font-size: var(--koz-font-size-4);
+  font-weight: 800;
+  letter-spacing: var(--client-otp-letter-spacing);
+  text-align: center;
+}
+
+.otp-resend {
+  display: grid;
+  gap: var(--koz-space-1);
+  color: var(--koz-color-muted);
+  text-align: center;
+}
+
+.otp-resend .koz-button {
+  justify-self: center;
+}
+
 @media (max-width: 1023px) {
   .cart-layout {
     grid-template-columns: 1fr;
@@ -600,5 +685,14 @@ a {
 
   .toast-viewport .koz-toast {
     min-width: 0;
+  }
+
+  .auth-page-shell .koz-auth-layout {
+    padding: var(--koz-space-3) var(--koz-space-2);
+  }
+
+  .auth-card {
+    gap: var(--koz-space-3);
+    padding: var(--koz-space-3);
   }
 }
