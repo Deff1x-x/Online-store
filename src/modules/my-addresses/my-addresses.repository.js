@@ -107,3 +107,15 @@ export const createCustomerAddress = async ({
     client.release();
   }
 };
+
+export const deleteCustomerAddress = async ({ addressId, customerId }) => {
+  const result = await query(
+    `DELETE FROM customer_addresses
+     WHERE id = $1
+       AND customer_id = $2
+     RETURNING id`,
+    [addressId, customerId],
+  );
+
+  return result.rows[0] || null;
+};

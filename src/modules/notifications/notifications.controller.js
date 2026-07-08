@@ -1,23 +1,15 @@
-import { sendControllerError } from '../../utils/http.js';
 import {
   sendEmailNotification,
   sendSmsNotification,
 } from './notifications.service.js';
 
-export const sendSms = async (request, response) => {
+const handle = (action) => async (request, response, next) => {
   try {
-    const result = await sendSmsNotification({ user: request.user, body: request.body });
-    return response.status(202).json(result);
+    return response.status(202).json(await action(request));
   } catch (error) {
-    return sendControllerError(response, error, 'Failed to send SMS notification');
+    return next(error);
   }
 };
 
-export const sendEmail = async (request, response) => {
-  try {
-    const result = await sendEmailNotification({ user: request.user, body: request.body });
-    return response.status(202).json(result);
-  } catch (error) {
-    return sendControllerError(response, error, 'Failed to send email notification');
-  }
-};
+export const sendSms = handle((request) => sendSmsNotification({ user: request.user, body: request.body }));
+export const sendEmail = handle((request) => sendEmailNotification({ user: request.user, body: request.body }));

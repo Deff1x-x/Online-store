@@ -1,7 +1,8 @@
-import { AppError, notImplemented } from '../../utils/errors.js';
+import { AppError } from '../../utils/AppError.js';
 import { ensureCustomerRecordForUserId } from '../customers/customers.service.js';
 import {
   createCustomerAddress,
+  deleteCustomerAddress,
   findAddressesByCustomerId,
   findCoverageById,
 } from './my-addresses.repository.js';
@@ -60,7 +61,7 @@ export const createAddress = async ({ user, body }) => {
     throw new AppError(400, 'Store coverage is not active', 'store_coverage_inactive');
   }
 
-  if (coverage.store_id !== customer.store_id) {
+  if (String(coverage.store_id) !== String(customer.store_id)) {
     throw new AppError(
       403,
       'Store coverage does not belong to the customer store',
@@ -103,4 +104,16 @@ export const createAddress = async ({ user, body }) => {
   };
 };
 
-export const deleteAddress = async () => notImplemented('Address deletion');
+export const deleteAddress = async ({ user, addressId }) => {
+  const customer = await ensureCustomerRecordForUserId(user.id);
+  const deleted = await deleteCustomerAddress({
+    addressId,
+    customerId: customer.id,
+  });
+
+  if (!deleted) {
+    throw new AppError(404, 'Address was not found', 'address_not_found');
+  }
+
+  return { message: 'Address deleted successfully' };
+};

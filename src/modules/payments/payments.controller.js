@@ -1,34 +1,20 @@
-import { sendControllerError } from '../../utils/http.js';
 import {
   getPayment as getPaymentService,
   initiateOrderPayment,
   listPayments,
 } from './payments.service.js';
 
-export const getPayments = async (request, response) => {
+const handle = (action, status = 200) => async (request, response, next) => {
   try {
-    const result = await listPayments({ user: request.user, query: request.query });
-    return response.status(200).json(result);
+    return response.status(status).json(await action(request));
   } catch (error) {
-    return sendControllerError(response, error, 'Failed to fetch payments');
+    return next(error);
   }
 };
 
-export const getPayment = async (request, response) => {
-  try {
-    const result = await getPaymentService({ user: request.user, paymentId: request.params.id });
-    return response.status(200).json(result);
-  } catch (error) {
-    return sendControllerError(response, error, 'Failed to fetch payment');
-  }
-};
-
-export const payOrderOnline = async (request, response) => {
-  try {
-    const orderId = request.params.id || request.params.orderId;
-    const result = await initiateOrderPayment({ user: request.user, orderId, body: request.body });
-    return response.status(201).json(result);
-  } catch (error) {
-    return sendControllerError(response, error, 'Failed to initiate online payment');
-  }
-};
+export const getPayments = handle((request) => listPayments({ query: request.query }));
+export const getPayment = handle((request) => getPaymentService({ paymentId: request.params.id }));
+export const payOrderOnline = handle((request) => initiateOrderPayment({
+  user: request.user,
+  orderId: request.params.id || request.params.orderId,
+}), 201);

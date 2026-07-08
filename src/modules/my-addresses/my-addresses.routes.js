@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken } from '../../middlewares/auth.middleware.js';
-import { authorizeRoles } from '../../middlewares/role.middleware.js';
+import { authenticateToken, authorizeRoles } from '../../middleware/auth.js';
 import { ROLES } from '../../utils/roles.js';
 import {
   createAddress,
