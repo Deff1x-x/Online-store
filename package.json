@@ -4,10 +4,14 @@
   "description": "Node.js Express backend for a multi-tenant e-commerce platform.",
   "type": "module",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "seed": "node database/seed.js"
+    "db:schema": "psql -f database/schema.sql",
+    "db:seed": "psql -f database/seed.sql"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

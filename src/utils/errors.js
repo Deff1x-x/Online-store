@@ -1,15 +1,4 @@
-export class AppError extends Error {
-  constructor(statusCode, message, code) {
-    super(message);
-    this.name = 'AppError';
-    this.statusCode = statusCode;
-    this.code = code;
-  }
-}
-
-export const isAppError = (error) => {
-  return error instanceof AppError;
-};
+import { AppError, isAppError } from './AppError.js';
 
 export const notImplemented = (featureName) => {
   throw new AppError(
@@ -18,3 +7,5 @@ export const notImplemented = (featureName) => {
     'not_implemented',
   );
 };
+
+export { AppError, isAppError };
