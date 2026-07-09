@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { ClientLayout, Footer, ThemeProvider } from "@koz/ui";
 import { useModal } from "@koz/api";
 import { AppHeader } from "./AppHeader";
@@ -7,6 +7,8 @@ import { ToastViewport } from "./ToastViewport";
 
 export function AppLayout() {
   const { modal } = useModal();
+  const { pathname } = useLocation();
+  const showCartIndicator = pathname !== "/checkout" && pathname !== "/order-success";
 
   return (
     <ThemeProvider>
@@ -16,7 +18,7 @@ export function AppLayout() {
       >
         <Outlet />
       </ClientLayout>
-      <CartIndicator />
+      {showCartIndicator ? <CartIndicator /> : null}
       <ToastViewport />
       {modal?.content}
     </ThemeProvider>

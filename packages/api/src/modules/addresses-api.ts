@@ -3,9 +3,9 @@ import type { ApiEntityResponse, ApiListResponse, ApiRecord } from "./shared";
 
 export type CreateAddressPayload = {
   store_coverage_id: string | number;
-  entrance?: string;
-  floor?: string;
-  apartment?: string;
+  entrance?: number;
+  floor?: number;
+  apartment?: number;
   entrance_code?: string;
   is_default?: boolean;
 };

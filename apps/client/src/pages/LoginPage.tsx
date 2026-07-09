@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Card, H1, Spinner, TextField } from "@koz/ui";
 import { useApi, useLoading, useToast } from "@koz/api";
 import { getOtpExpiry, saveAuthFlow } from "../auth/auth-flow";
@@ -7,6 +7,7 @@ import { validatePhone } from "../auth/validation";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { modules } = useApi();
   const { showToast } = useToast();
   const { isLoading, withLoading } = useLoading();
@@ -29,6 +30,7 @@ export function LoginPage() {
         intent: "login",
         phone,
         expiresAt: getOtpExpiry(response.expires_in_seconds),
+        returnTo: searchParams.get("returnTo") === "/checkout" ? "/checkout" : undefined,
       });
       navigate("/otp");
     } catch {
@@ -67,7 +69,10 @@ export function LoginPage() {
         </Button>
       </form>
       <p className="auth-switch">
-        Впервые в клубе? <Link to="/register">Зарегистрироваться</Link>
+        Впервые в клубе?{" "}
+        <Link to={searchParams.get("returnTo") === "/checkout" ? "/register?returnTo=/checkout" : "/register"}>
+          Зарегистрироваться
+        </Link>
       </p>
     </Card>
   );

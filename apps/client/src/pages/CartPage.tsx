@@ -134,6 +134,9 @@ export function CartPage() {
               </div>
               <p>Итог станет окончательным после взвешивания</p>
             </div>
+            <Button type="button" size="lg" fullWidth onClick={() => navigate("/checkout")}>
+              Оформить
+            </Button>
           </Card>
         </aside>
       </div>

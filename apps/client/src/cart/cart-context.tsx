@@ -24,6 +24,7 @@ type CartContextValue = {
   addProduct: (product: StoreProduct) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   removeProduct: (productId: string) => void;
+  clearCart: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -123,6 +124,8 @@ export function CartProvider({ children }: PropsWithChildren) {
     setItems((current) => current.filter((item) => item.product_id !== productId));
   }, []);
 
+  const clearCart = useCallback(() => setItems([]), []);
+
   const subtotal = useMemo(
     () =>
       items.reduce(
@@ -140,8 +143,9 @@ export function CartProvider({ children }: PropsWithChildren) {
       addProduct,
       updateQuantity,
       removeProduct,
+      clearCart,
     }),
-    [addProduct, items, removeProduct, subtotal, updateQuantity],
+    [addProduct, clearCart, items, removeProduct, subtotal, updateQuantity],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -10,6 +10,7 @@ export type AuthFlow = {
   name?: string;
   privacyPolicy?: boolean;
   termsOfService?: boolean;
+  returnTo?: string;
 };
 
 export function readAuthFlow(): AuthFlow | null {

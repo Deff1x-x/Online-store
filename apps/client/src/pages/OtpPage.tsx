@@ -88,7 +88,7 @@ export function OtpPage() {
       });
 
       clearAuthFlow();
-      navigate("/shop", { replace: true });
+      navigate(flow.returnTo === "/checkout" ? "/checkout" : "/shop", { replace: true });
     } catch (error) {
       if (error instanceof APIError && error.code === "consents_required") {
         showToast({

@@ -3,9 +3,11 @@ import { CartProvider } from "./cart/cart-context";
 import { AppLayout } from "./components/AppLayout";
 import { AuthRouteLayout } from "./components/AuthRouteLayout";
 import { CartPage } from "./pages/CartPage";
+import { CheckoutPage } from "./pages/CheckoutPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { OtpPage } from "./pages/OtpPage";
+import { OrderSuccessPage } from "./pages/OrderSuccessPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ShopPage } from "./pages/ShopPage";
 import { PaywallProvider } from "./paywall/paywall-context";
@@ -20,6 +22,8 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/shop" element={<ShopPage />} />
             <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/order-success" element={<OrderSuccessPage />} />
           </Route>
           <Route element={<AuthRouteLayout />}>
             <Route path="/login" element={<LoginPage />} />
