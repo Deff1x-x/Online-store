@@ -11,19 +11,28 @@ import { LocalStorageAdapter, useToast } from "@koz/api";
 import type { StoreProduct } from "../types";
 
 const CART_STORAGE_KEY = "koz.client.cart.v1";
+const PROMO_STORAGE_KEY = "koz.client.cart-promo.v1";
 const localStorageAdapter = new LocalStorageAdapter();
 
 export type CartItem = StoreProduct & {
   cartQuantity: number;
 };
 
+export type AppliedPromo = {
+  promo_code: string;
+  discount_amount: number;
+};
+
 type CartContextValue = {
   items: CartItem[];
   itemCount: number;
   subtotal: number;
+  appliedPromo: AppliedPromo | null;
   addProduct: (product: StoreProduct) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   removeProduct: (productId: string) => void;
+  setAppliedPromo: (promo: AppliedPromo) => void;
+  clearAppliedPromo: () => void;
   clearCart: () => void;
 };
 
@@ -42,17 +51,53 @@ function readCart(): CartItem[] {
   }
 }
 
+function readAppliedPromo(): AppliedPromo | null {
+  const serialized = localStorageAdapter.getItem(PROMO_STORAGE_KEY);
+  if (!serialized) return null;
+
+  try {
+    const parsed = JSON.parse(serialized) as Partial<AppliedPromo>;
+    if (
+      typeof parsed.promo_code !== "string" ||
+      !parsed.promo_code ||
+      typeof parsed.discount_amount !== "number" ||
+      !Number.isFinite(parsed.discount_amount)
+    ) {
+      localStorageAdapter.removeItem(PROMO_STORAGE_KEY);
+      return null;
+    }
+
+    return {
+      promo_code: parsed.promo_code,
+      discount_amount: parsed.discount_amount,
+    };
+  } catch {
+    localStorageAdapter.removeItem(PROMO_STORAGE_KEY);
+    return null;
+  }
+}
+
 function roundWeightedQuantity(quantity: number) {
   return Math.round(quantity * 10) / 10;
 }
 
 export function CartProvider({ children }: PropsWithChildren) {
   const [items, setItems] = useState<CartItem[]>(readCart);
+  const [appliedPromo, setAppliedPromoState] = useState<AppliedPromo | null>(readAppliedPromo);
   const { showToast } = useToast();
 
   useEffect(() => {
     localStorageAdapter.setItem(CART_STORAGE_KEY, JSON.stringify(items));
   }, [items]);
+
+  useEffect(() => {
+    if (appliedPromo) {
+      localStorageAdapter.setItem(PROMO_STORAGE_KEY, JSON.stringify(appliedPromo));
+      return;
+    }
+
+    localStorageAdapter.removeItem(PROMO_STORAGE_KEY);
+  }, [appliedPromo]);
 
   const notifyStockLimit = useCallback(() => {
     showToast({
@@ -75,6 +120,7 @@ export function CartProvider({ children }: PropsWithChildren) {
       }
 
       if (existing) {
+        setAppliedPromoState(null);
         setItems((current) =>
           current.map((item) =>
             item.product_id === product.product_id
@@ -85,6 +131,7 @@ export function CartProvider({ children }: PropsWithChildren) {
         return;
       }
 
+      setAppliedPromoState(null);
       setItems((current) => [...current, { ...product, cartQuantity: increment }]);
     },
     [items, notifyStockLimit],
@@ -96,6 +143,7 @@ export function CartProvider({ children }: PropsWithChildren) {
       if (!item || !Number.isFinite(requestedQuantity)) return;
 
       if (requestedQuantity <= 0) {
+        setAppliedPromoState(null);
         setItems((current) => current.filter((entry) => entry.product_id !== productId));
         return;
       }
@@ -109,6 +157,7 @@ export function CartProvider({ children }: PropsWithChildren) {
         return;
       }
 
+      setAppliedPromoState(null);
       setItems((current) =>
         current.map((entry) =>
           entry.product_id === productId
@@ -121,10 +170,22 @@ export function CartProvider({ children }: PropsWithChildren) {
   );
 
   const removeProduct = useCallback((productId: string) => {
+    setAppliedPromoState(null);
     setItems((current) => current.filter((item) => item.product_id !== productId));
   }, []);
 
-  const clearCart = useCallback(() => setItems([]), []);
+  const setAppliedPromo = useCallback((promo: AppliedPromo) => {
+    setAppliedPromoState(promo);
+  }, []);
+
+  const clearAppliedPromo = useCallback(() => {
+    setAppliedPromoState(null);
+  }, []);
+
+  const clearCart = useCallback(() => {
+    setAppliedPromoState(null);
+    setItems([]);
+  }, []);
 
   const subtotal = useMemo(
     () =>
@@ -140,12 +201,25 @@ export function CartProvider({ children }: PropsWithChildren) {
       items,
       itemCount: items.length,
       subtotal,
+      appliedPromo,
       addProduct,
       updateQuantity,
       removeProduct,
+      setAppliedPromo,
+      clearAppliedPromo,
       clearCart,
     }),
-    [addProduct, clearCart, items, removeProduct, subtotal, updateQuantity],
+    [
+      addProduct,
+      appliedPromo,
+      clearAppliedPromo,
+      clearCart,
+      items,
+      removeProduct,
+      setAppliedPromo,
+      subtotal,
+      updateQuantity,
+    ],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

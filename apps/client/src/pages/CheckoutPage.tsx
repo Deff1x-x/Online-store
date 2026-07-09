@@ -73,7 +73,7 @@ export function CheckoutPage() {
   const { modules } = useApi();
   const { showToast } = useToast();
   const { openPaywall } = usePaywall();
-  const { items, subtotal, clearCart } = useCart();
+  const { items, subtotal, appliedPromo, clearCart } = useCart();
   const [entrance, setEntrance] = useState("");
   const [floor, setFloor] = useState("");
   const [apartment, setApartment] = useState("");
@@ -83,7 +83,8 @@ export function CheckoutPage() {
   const [loadingLabel, setLoadingLabel] = useState<string | null>(null);
 
   const deliveryFee = subtotal < FREE_DELIVERY_THRESHOLD ? DELIVERY_FEE : 0;
-  const finalTotal = subtotal + deliveryFee;
+  const promoDiscount = appliedPromo?.discount_amount ?? 0;
+  const finalTotal = subtotal - promoDiscount + deliveryFee;
   const onlineAmount = Math.round(finalTotal * ONLINE_SHARE * 100) / 100;
   const posRemainder = Math.round((finalTotal - onlineAmount) * 100) / 100;
   const isLoading = loadingLabel !== null;
@@ -143,6 +144,7 @@ export function CheckoutPage() {
           product_id: item.product_id,
           quantity: Number(item.cartQuantity),
         })),
+        ...(appliedPromo ? { promo_code: appliedPromo.promo_code } : {}),
       });
 
       const preauthAmount = Number(orderResponse.payment_options.online.preauth_amount);
@@ -279,6 +281,12 @@ export function CheckoutPage() {
                 <dt>Товары</dt>
                 <dd>{formatCurrency(subtotal)}</dd>
               </div>
+              {appliedPromo ? (
+                <div>
+                  <dt>Промокод</dt>
+                  <dd>-{formatCurrency(promoDiscount)}</dd>
+                </div>
+              ) : null}
               <div>
                 <dt>Доставка</dt>
                 <dd>{deliveryFee === 0 ? "Бесплатно" : formatCurrency(deliveryFee)}</dd>

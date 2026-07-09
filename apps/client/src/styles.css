@@ -958,6 +958,17 @@ a {
   font-weight: 700;
 }
 
+.promo-field__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--koz-space-1);
+}
+
+.promo-field small {
+  color: var(--koz-color-muted);
+  font-weight: 600;
+}
+
 .price-list {
   display: grid;
   gap: var(--koz-space-1);
@@ -1225,6 +1236,10 @@ a {
   .cart-item {
     grid-template-columns: auto 1fr auto;
     padding: var(--koz-space-2);
+  }
+
+  .promo-field__row {
+    grid-template-columns: 1fr;
   }
 
   .product-visual--compact {
