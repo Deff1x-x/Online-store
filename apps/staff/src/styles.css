@@ -371,6 +371,35 @@ a {
   gap: var(--koz-space-1);
 }
 
+.manager-pick-checklist {
+  display: grid;
+  gap: var(--koz-space-2);
+}
+
+.manager-pick-checklist__items {
+  display: grid;
+  gap: var(--koz-space-1);
+}
+
+.manager-pick-checklist__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--koz-space-1);
+  border: var(--koz-border-width) solid var(--koz-color-muted);
+  padding: var(--koz-space-2);
+}
+
+.manager-pick-checklist__item strong,
+.manager-pick-checklist__item small {
+  display: block;
+}
+
+.manager-pick-checklist__item small {
+  color: var(--koz-color-muted);
+  font-weight: 700;
+}
+
 .manager-stop-cell {
   display: grid;
   gap: calc(var(--koz-space-1) / 2);

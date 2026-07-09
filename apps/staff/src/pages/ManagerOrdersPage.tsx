@@ -19,10 +19,12 @@ import { useApi, useToast } from "@koz/api";
 type OrderStatus = "new" | "picked" | "in_delivery" | "delivered" | "failed" | "cancelled";
 
 type OrderItem = {
+  id?: string | number;
   product_id?: string | number;
   name?: string;
   quantity?: string | number;
   unit?: string;
+  price_per_unit?: string | number;
   line_total?: string | number;
 };
 
@@ -108,6 +110,15 @@ function mergeOrder(current: ManagerOrder[], updated: ManagerOrder) {
   );
 }
 
+function getOrderItemKey(item: OrderItem, index: number) {
+  return item.id !== undefined ? String(item.id) : `${item.product_id ?? item.name ?? "item"}-${index}`;
+}
+
+function formatOrderItemQuantity(item: OrderItem) {
+  const quantity = item.quantity ?? "—";
+  return item.unit ? `${quantity} ${item.unit}` : String(quantity);
+}
+
 export function ManagerOrdersPage() {
   const { modules } = useApi();
   const { showToast } = useToast();
@@ -118,6 +129,8 @@ export function ManagerOrdersPage() {
   const [actualWeightOrder, setActualWeightOrder] = useState<ManagerOrder | null>(null);
   const [actualWeight, setActualWeight] = useState("");
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [pickChecklistOrder, setPickChecklistOrder] = useState<ManagerOrder | null>(null);
+  const [checkedPickItems, setCheckedPickItems] = useState<Record<string, boolean>>({});
   const [posConfirmed, setPosConfirmed] = useState<Record<string, boolean>>({});
 
   const loadOrders = useCallback(
@@ -160,11 +173,25 @@ export function ManagerOrdersPage() {
     try {
       const result = (await modules.managerApi.pickOrder(order.id)) as unknown as { order: ManagerOrder };
       setOrders((current) => mergeOrder(current, result.order));
+      await loadOrders(true);
+      setPickChecklistOrder(null);
+      setCheckedPickItems({});
       showToast({ message: "Заказ переведён в сборку.", tone: "success" });
     } finally {
       setBusyOrderId(null);
     }
   };
+
+  const openPickChecklist = useCallback((order: ManagerOrder) => {
+    setPickChecklistOrder(order);
+    setCheckedPickItems({});
+  }, []);
+
+  const closePickChecklist = useCallback(() => {
+    if (pickChecklistOrder && busyOrderId === pickChecklistOrder.id) return;
+    setPickChecklistOrder(null);
+    setCheckedPickItems({});
+  }, [busyOrderId, pickChecklistOrder]);
 
   const submitActualWeight = async () => {
     if (!actualWeightOrder) return;
@@ -194,6 +221,12 @@ export function ManagerOrdersPage() {
       setBusyOrderId(null);
     }
   };
+
+  const pickChecklistItems = pickChecklistOrder?.items ?? [];
+  const hasPickChecklistItems = pickChecklistItems.length > 0;
+  const checkedPickItemCount = pickChecklistItems.filter((item, index) => checkedPickItems[getOrderItemKey(item, index)])
+    .length;
+  const canConfirmPick = !hasPickChecklistItems || checkedPickItemCount === pickChecklistItems.length;
 
   const columns = useMemo(
     () => [
@@ -270,7 +303,7 @@ export function ManagerOrdersPage() {
                   size="sm"
                   disabled={isBusy}
                   leftIcon={isBusy ? <Spinner /> : <Icon name="package" size={16} />}
-                  onClick={() => void pickOrder(order)}
+                  onClick={() => openPickChecklist(order)}
                 >
                   Собрать
                 </Button>
@@ -401,7 +434,7 @@ export function ManagerOrdersPage() {
         },
       },
     ],
-    [busyOrderId, posConfirmed, showToast],
+    [busyOrderId, openPickChecklist, posConfirmed, showToast],
   );
 
   return (
@@ -426,6 +459,70 @@ export function ManagerOrdersPage() {
           <Table columns={columns} data={orders} getRowKey={(order) => String(order.id)} emptyText="Заказов нет" />
         </Card>
       )}
+
+      <Modal
+        open={Boolean(pickChecklistOrder)}
+        title={pickChecklistOrder ? `Чек-лист сборки #${pickChecklistOrder.id}` : undefined}
+        onClose={closePickChecklist}
+        footer={
+          <div className="manager-modal-actions">
+            <Button type="button" variant="secondary" onClick={closePickChecklist}>
+              Назад
+            </Button>
+            <Button
+              type="button"
+              disabled={!pickChecklistOrder || !canConfirmPick || busyOrderId === pickChecklistOrder.id}
+              leftIcon={pickChecklistOrder && busyOrderId === pickChecklistOrder.id ? <Spinner /> : undefined}
+              onClick={() => pickChecklistOrder && void pickOrder(pickChecklistOrder)}
+            >
+              Подтвердить сборку
+            </Button>
+          </div>
+        }
+      >
+        <div className="manager-pick-checklist">
+          {hasPickChecklistItems ? (
+            <>
+              <Body tone="muted">
+                Отметьте все позиции перед переводом заказа в статус «Собран».
+              </Body>
+              <div className="manager-pick-checklist__items">
+                {pickChecklistItems.map((item, index) => {
+                  const itemKey = getOrderItemKey(item, index);
+                  return (
+                    <div className="manager-pick-checklist__item" key={itemKey}>
+                      <Checkbox
+                        checked={Boolean(checkedPickItems[itemKey])}
+                        onChange={(event) =>
+                          setCheckedPickItems((current) => ({
+                            ...current,
+                            [itemKey]: event.target.checked,
+                          }))
+                        }
+                      />
+                      <span>
+                        <strong>{item.name ?? "Позиция без названия"}</strong>
+                        <small>
+                          Количество: {formatOrderItemQuantity(item)}
+                          {item.price_per_unit !== undefined ? ` · цена ${formatCurrency(item.price_per_unit)}` : ""}
+                          {item.line_total !== undefined ? ` · сумма ${formatCurrency(item.line_total)}` : ""}
+                        </small>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <Body tone="muted">
+                Отмечено {checkedPickItemCount} из {pickChecklistItems.length}.
+              </Body>
+            </>
+          ) : (
+            <Body tone="muted">
+              В заказе нет отображаемых позиций. Проверьте заказ вручную перед подтверждением сборки.
+            </Body>
+          )}
+        </div>
+      </Modal>
 
       <Modal
         open={Boolean(actualWeightOrder)}
