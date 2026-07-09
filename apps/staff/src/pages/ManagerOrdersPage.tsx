@@ -14,7 +14,7 @@ import {
   Table,
   TextField,
 } from "@koz/ui";
-import { useApi, useToast } from "@koz/api";
+import { formatMoney, useApi, useToast } from "@koz/api";
 
 type OrderStatus = "new" | "picked" | "in_delivery" | "delivered" | "failed" | "cancelled";
 
@@ -78,11 +78,6 @@ const statusLabels: Record<OrderStatus, string> = {
 };
 
 const terminalStatuses = new Set<OrderStatus>(["delivered", "failed", "cancelled"]);
-
-const formatCurrency = (value: string | number | undefined) =>
-  `${Number(value ?? 0).toLocaleString("ru-RU", {
-    maximumFractionDigits: 0,
-  })} ₸`;
 
 function addressLine(address?: DeliveryAddress | null) {
   if (!address) return "Адрес не указан";
@@ -212,9 +207,9 @@ export function ManagerOrdersPage() {
       setActualWeight("");
       showToast({
         title: "Вес пересчитан",
-        message: `Итого ${formatCurrency(result.order.final_total)}, capture ${formatCurrency(
+        message: `Итого ${formatMoney(result.order.final_total)}, списано онлайн ${formatMoney(
           result.order.online_capture_amount,
-        )}, POS ${formatCurrency(result.order.pos_terminal_topup)}.`,
+        )}, доплата POS ${formatMoney(result.order.pos_terminal_topup)}.`,
         tone: "success",
       });
     } finally {
@@ -269,20 +264,20 @@ export function ManagerOrdersPage() {
           <dl className="manager-money-list">
             <div>
               <dt>Сумма</dt>
-              <dd>{formatCurrency(order.final_total ?? order.total_price)}</dd>
+              <dd>{formatMoney(order.final_total ?? order.total_price)}</dd>
             </div>
             <div>
-              <dt>Hold 80%</dt>
-              <dd>{formatCurrency(order.online_payment_amount)}</dd>
+              <dt>Холд 80%</dt>
+              <dd>{formatMoney(order.online_payment_amount)}</dd>
             </div>
             <div>
-              <dt>POS topup</dt>
-              <dd>{formatCurrency(order.pos_terminal_topup)}</dd>
+              <dt>Доплата POS</dt>
+              <dd>{formatMoney(order.pos_terminal_topup)}</dd>
             </div>
             {order.online_capture_amount !== undefined ? (
               <div>
-                <dt>Capture</dt>
-                <dd>{formatCurrency(order.online_capture_amount)}</dd>
+                <dt>Списано онлайн</dt>
+                <dd>{formatMoney(order.online_capture_amount)}</dd>
               </div>
             ) : null}
           </dl>
@@ -504,8 +499,8 @@ export function ManagerOrdersPage() {
                         <strong>{item.name ?? "Позиция без названия"}</strong>
                         <small>
                           Количество: {formatOrderItemQuantity(item)}
-                          {item.price_per_unit !== undefined ? ` · цена ${formatCurrency(item.price_per_unit)}` : ""}
-                          {item.line_total !== undefined ? ` · сумма ${formatCurrency(item.line_total)}` : ""}
+                          {item.price_per_unit !== undefined ? ` · цена ${formatMoney(item.price_per_unit)}` : ""}
+                          {item.line_total !== undefined ? ` · сумма ${formatMoney(item.line_total)}` : ""}
                         </small>
                       </span>
                     </div>
@@ -544,7 +539,7 @@ export function ManagerOrdersPage() {
         }
       >
         <TextField
-          label="actual_weight"
+          label="Фактический вес"
           type="number"
           inputMode="decimal"
           min="0"

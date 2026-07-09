@@ -13,7 +13,7 @@ import {
   Table,
   TextField,
 } from "@koz/ui";
-import { useApi, useToast } from "@koz/api";
+import { formatMoney, useApi, useToast } from "@koz/api";
 
 type InventoryItem = {
   product_id: string | number;
@@ -43,11 +43,6 @@ const statusLabel = (status?: string) => {
   if (status === "available") return "В наличии";
   return status ?? "—";
 };
-
-const formatCurrency = (value: string | number | undefined) =>
-  `${Number(value ?? 0).toLocaleString("ru-RU", {
-    maximumFractionDigits: 0,
-  })} ₸`;
 
 const draftFromItem = (item: InventoryItem): InventoryDraft => ({
   selling_price: item.selling_price === null || item.selling_price === undefined ? "" : String(item.selling_price),
@@ -159,17 +154,17 @@ export function ManagerStockPage() {
       },
       {
         key: "unit",
-        header: "Unit",
+        header: "Ед.",
         render: (item: InventoryItem) => item.unit ?? "—",
       },
       {
         key: "effective_price",
-        header: "Effective price",
-        render: (item: InventoryItem) => <strong className="manager-green">{formatCurrency(item.effective_price)}</strong>,
+        header: "Эффективная цена",
+        render: (item: InventoryItem) => <strong className="manager-green">{formatMoney(item.effective_price)}</strong>,
       },
       {
         key: "selling_price",
-        header: "Selling price",
+        header: "Локальная цена",
         render: (item: InventoryItem) => {
           const key = String(item.product_id);
           return (
@@ -177,7 +172,7 @@ export function ManagerStockPage() {
               type="number"
               inputMode="decimal"
               min="0"
-              placeholder="null"
+              placeholder="цена сети"
               value={drafts[key]?.selling_price ?? ""}
               disabled={busyProductId === item.product_id}
               onChange={(event) =>
@@ -201,7 +196,7 @@ export function ManagerStockPage() {
       },
       {
         key: "quantity",
-        header: "Quantity",
+        header: "Остаток",
         render: (item: InventoryItem) => {
           const key = String(item.product_id);
           return (
@@ -232,12 +227,12 @@ export function ManagerStockPage() {
       },
       {
         key: "status",
-        header: "Status",
+        header: "Статус",
         render: (item: InventoryItem) => <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>,
       },
       {
         key: "visible",
-        header: "is_visible",
+        header: "Видимость",
         render: (item: InventoryItem) => (
           <div className="manager-stop-cell">
             <Switch
@@ -309,7 +304,7 @@ export function ManagerStockPage() {
         }
       >
         <TextField
-          label="quantity"
+          label="Количество"
           type="number"
           inputMode="decimal"
           min="0"

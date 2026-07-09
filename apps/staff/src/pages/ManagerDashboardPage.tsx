@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Badge, Body, Card, H1, Loader } from "@koz/ui";
-import { useApi } from "@koz/api";
+import { formatMoney, useApi } from "@koz/api";
 
 type Analytics = {
   funnel?: Record<string, number | string | undefined>;
@@ -11,11 +11,6 @@ type Analytics = {
   out_of_stock?: number | string;
   low_stock?: number | string;
 };
-
-const formatCurrency = (value: number | string | undefined) =>
-  `${Number(value ?? 0).toLocaleString("ru-RU", {
-    maximumFractionDigits: 0,
-  })} ₸`;
 
 const metricGroups = [
   { key: "new", label: "Новые" },
@@ -53,15 +48,15 @@ export function ManagerDashboardPage() {
   }
 
   const moneyMetrics = [
-    { label: "GMV", value: formatCurrency(analytics?.gmv_delivered) },
-    { label: "POS collected", value: formatCurrency(analytics?.pos_collected) },
-    { label: "Average order", value: formatCurrency(analytics?.avg_order_value) },
+    { label: "GMV", value: formatMoney(analytics?.gmv_delivered) },
+    { label: "Получено POS", value: formatMoney(analytics?.pos_collected) },
+    { label: "Средний чек", value: formatMoney(analytics?.avg_order_value) },
   ];
 
   const stockMetrics = [
-    { label: "Stopped items", value: Number(analytics?.stopped_items ?? 0) },
-    { label: "Out of stock", value: Number(analytics?.out_of_stock ?? 0) },
-    { label: "Low stock", value: Number(analytics?.low_stock ?? 0) },
+    { label: "Стоп-позиции", value: Number(analytics?.stopped_items ?? 0) },
+    { label: "Нет остатка", value: Number(analytics?.out_of_stock ?? 0) },
+    { label: "Мало остатка", value: Number(analytics?.low_stock ?? 0) },
   ];
 
   return (
@@ -92,7 +87,7 @@ export function ManagerDashboardPage() {
       <Card className="manager-panel">
         <div className="manager-panel__heading">
           <h2>Остатки</h2>
-          <Badge tone="primary">live</Badge>
+          <Badge tone="primary">Онлайн</Badge>
         </div>
         <div className="manager-stock-summary">
           {stockMetrics.map((metric) => (
