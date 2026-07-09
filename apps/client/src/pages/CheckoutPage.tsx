@@ -38,16 +38,28 @@ type CreateOrderResponse = {
   order_number: string;
   breakdown: {
     subtotal: string | number;
+    discount_total?: string | number;
+    promo_discount?: string | number;
     delivery_fee: string | number;
     final_total: string | number;
   };
   payment_options: {
     online: {
-      preauth_amount: string | number;
-      remainder_on_delivery: string | number;
+      preauth_amount?: string | number;
+      amount?: string | number;
+      remainder_on_delivery?: string | number;
     };
   };
   order?: {
+    final_total?: string | number;
+    total_amount?: string | number;
+    delivery_fee?: string | number;
+    discount_total?: string | number;
+    discount_amount?: string | number;
+    online_payment_amount?: string | number;
+    online_amount?: string | number;
+    pos_terminal_topup?: string | number;
+    pos_remainder_amount?: string | number;
     fulfillment_window?: "same_day" | "next_morning";
   };
 };
@@ -64,6 +76,17 @@ function validatePositiveInteger(value: string, label: string) {
   if (!Number.isInteger(number) || number <= 0) {
     return `${label} должен быть положительным целым числом`;
   }
+  return undefined;
+}
+
+function readBackendAmount(...values: Array<string | number | undefined>) {
+  for (const value of values) {
+    if (value === undefined) continue;
+
+    const amount = Number(value);
+    if (Number.isFinite(amount)) return amount;
+  }
+
   return undefined;
 }
 
@@ -147,7 +170,36 @@ export function CheckoutPage() {
         ...(appliedPromo ? { promo_code: appliedPromo.promo_code } : {}),
       });
 
-      const preauthAmount = Number(orderResponse.payment_options.online.preauth_amount);
+      const preauthAmount = readBackendAmount(
+        orderResponse.payment_options.online.preauth_amount,
+        orderResponse.payment_options.online.amount,
+        orderResponse.order?.online_payment_amount,
+        orderResponse.order?.online_amount,
+      );
+      const finalOrderTotal = readBackendAmount(
+        orderResponse.breakdown.final_total,
+        orderResponse.order?.final_total,
+        orderResponse.order?.total_amount,
+      );
+      const deliveryOrderFee = readBackendAmount(
+        orderResponse.breakdown.delivery_fee,
+        orderResponse.order?.delivery_fee,
+      );
+      const discountOrderTotal = readBackendAmount(
+        orderResponse.breakdown.discount_total,
+        orderResponse.breakdown.promo_discount,
+        orderResponse.order?.discount_total,
+        orderResponse.order?.discount_amount,
+      );
+      const posRemainderAmount = readBackendAmount(
+        orderResponse.payment_options.online.remainder_on_delivery,
+        orderResponse.order?.pos_terminal_topup,
+        orderResponse.order?.pos_remainder_amount,
+      );
+
+      if (preauthAmount === undefined) {
+        throw new Error("Backend did not return online payment amount");
+      }
       setLoadingLabel("Открываем оплату");
       await paymentProvider.init(preauthAmount, orderResponse.order_id);
 
@@ -155,6 +207,10 @@ export function CheckoutPage() {
         orderId: orderResponse.order_id,
         orderNumber: orderResponse.order_number,
         preauthAmount,
+        finalTotal: finalOrderTotal,
+        deliveryFee: deliveryOrderFee,
+        discountTotal: discountOrderTotal,
+        posRemainderAmount,
         fulfillmentWindow: orderResponse.order?.fulfillment_window ?? "same_day",
       });
       clearCart();
@@ -300,11 +356,11 @@ export function CheckoutPage() {
             <div className="split-payment">
               <span className="split-payment__title">ОПЛАТА В ДВЕ ЧАСТИ</span>
               <div>
-                <span>Сейчас на сайте — 80%</span>
+                <span>Сейчас на сайте — 80% предварительно</span>
                 <strong>{formatCurrency(onlineAmount, 2)}</strong>
               </div>
               <div>
-                <span>Курьеру на ПОС-терминал, по факту веса</span>
+                <span>Курьеру на ПОС-терминал, предварительно</span>
                 <strong>~{formatCurrency(posRemainder, 2)}</strong>
               </div>
               <p>Итог станет окончательным после взвешивания</p>
@@ -316,7 +372,7 @@ export function CheckoutPage() {
               disabled={isLoading}
               leftIcon={isLoading ? <Spinner /> : undefined}
             >
-              {loadingLabel ?? `Оплатить ${formatCurrency(onlineAmount, 2)} (80%) картой`}
+              {loadingLabel ?? `Предварительно оплатить ${formatCurrency(onlineAmount, 2)} (80%) картой`}
             </Button>
           </Card>
         </aside>

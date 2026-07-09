@@ -41,6 +41,14 @@ export function OrderSuccessPage() {
         <div className="order-success-card__payment">
           <span>Заблокировано на карте (80%)</span>
           <strong>{formatCurrency(orderResult.preauthAmount, 2)}</strong>
+          {orderResult.finalTotal !== undefined ? (
+            <span>Итого по заказу: {formatCurrency(orderResult.finalTotal, 2)}</span>
+          ) : null}
+          {orderResult.posRemainderAmount !== undefined ? (
+            <span>
+              Курьеру на POS-терминал: ~{formatCurrency(orderResult.posRemainderAmount, 2)}
+            </span>
+          ) : null}
         </div>
         <p className="order-success-card__delivery">
           <Icon name="truck" size={24} />

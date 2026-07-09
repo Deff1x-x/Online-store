@@ -7,8 +7,16 @@ export type OrderResult = {
   orderId: string;
   orderNumber: string;
   preauthAmount: number;
+  finalTotal?: number;
+  deliveryFee?: number;
+  discountTotal?: number;
+  posRemainderAmount?: number;
   fulfillmentWindow: "same_day" | "next_morning";
 };
+
+function readOptionalNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
 
 export function saveOrderResult(result: OrderResult) {
   sessionStorageAdapter.setItem(ORDER_RESULT_STORAGE_KEY, JSON.stringify(result));
@@ -30,7 +38,16 @@ export function readOrderResult(): OrderResult | null {
       sessionStorageAdapter.removeItem(ORDER_RESULT_STORAGE_KEY);
       return null;
     }
-    return parsed as OrderResult;
+    return {
+      orderId: parsed.orderId,
+      orderNumber: parsed.orderNumber,
+      preauthAmount: parsed.preauthAmount,
+      finalTotal: readOptionalNumber(parsed.finalTotal),
+      deliveryFee: readOptionalNumber(parsed.deliveryFee),
+      discountTotal: readOptionalNumber(parsed.discountTotal),
+      posRemainderAmount: readOptionalNumber(parsed.posRemainderAmount),
+      fulfillmentWindow: parsed.fulfillmentWindow,
+    };
   } catch {
     sessionStorageAdapter.removeItem(ORDER_RESULT_STORAGE_KEY);
     return null;

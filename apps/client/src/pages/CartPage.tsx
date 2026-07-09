@@ -229,11 +229,11 @@ export function CartPage() {
             <div className="split-payment">
               <span className="split-payment__title">ОПЛАТА В ДВЕ ЧАСТИ</span>
               <div>
-                <span>Сейчас на сайте — 80%</span>
+                <span>Сейчас на сайте — 80% предварительно</span>
                 <strong>{formatCurrency(onlineAmount, 2)}</strong>
               </div>
               <div>
-                <span>Курьеру на ПОС-терминал, по факту веса</span>
+                <span>Курьеру на ПОС-терминал, предварительно</span>
                 <strong>~{formatCurrency(posRemainder, 2)}</strong>
               </div>
               <p>Итог станет окончательным после взвешивания</p>
