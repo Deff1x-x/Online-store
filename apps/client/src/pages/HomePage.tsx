@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button, Display, Icon } from "@koz/ui";
-import { useModal } from "@koz/api";
-import { PaywallModal } from "../components/PaywallModal";
+import { usePaywall } from "../paywall/paywall-context";
 
 const BENEFITS = [
   {
@@ -23,7 +22,7 @@ const BENEFITS = [
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { openModal } = useModal();
+  const { openPaywall } = usePaywall();
 
   return (
     <main className="home-page">
@@ -46,7 +45,7 @@ export function HomePage() {
             <Button
               type="button"
               size="lg"
-              onClick={() => openModal(<PaywallModal />, "subscription-paywall")}
+              onClick={openPaywall}
             >
               Вступить в клуб — 3 900 ₸/мес
             </Button>

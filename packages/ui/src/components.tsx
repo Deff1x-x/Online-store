@@ -185,14 +185,20 @@ export type ModalProps = PropsWithChildren<{
   title?: ReactNode;
   onClose?: () => void;
   footer?: ReactNode;
+  className?: string;
 }>;
 
-export function Modal({ open, title, children, footer, onClose }: ModalProps) {
+export function Modal({ open, title, children, footer, onClose, className }: ModalProps) {
   if (!open) return null;
 
   return (
     <div className="koz-overlay" role="presentation">
-      <section className="koz-modal" role="dialog" aria-modal="true" aria-label={typeof title === "string" ? title : undefined}>
+      <section
+        className={cx("koz-modal", className)}
+        role="dialog"
+        aria-modal="true"
+        aria-label={typeof title === "string" ? title : undefined}
+      >
         <div className="koz-modal__header">
           {title ? <h2>{title}</h2> : null}
           {onClose ? (

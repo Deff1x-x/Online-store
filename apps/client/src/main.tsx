@@ -4,10 +4,11 @@ import { BrowserRouter } from "react-router-dom";
 import { FrontendApiProvider } from "@koz/api";
 import "@koz/ui/styles.css";
 import App from "./App";
+import { requestPaywall } from "./paywall/paywall-context";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <FrontendApiProvider>
+    <FrontendApiProvider onSubscriptionError={requestPaywall}>
       <BrowserRouter
         future={{
           v7_relativeSplatPath: true,
