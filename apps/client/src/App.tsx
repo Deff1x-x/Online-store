@@ -8,6 +8,8 @@ import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { OtpPage } from "./pages/OtpPage";
 import { OrderSuccessPage } from "./pages/OrderSuccessPage";
+import { OrdersPage } from "./pages/OrdersPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ShopPage } from "./pages/ShopPage";
 import { PaywallProvider } from "./paywall/paywall-context";
@@ -24,6 +26,8 @@ export default function App() {
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/order-success" element={<OrderSuccessPage />} />
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Route>
           <Route element={<AuthRouteLayout />}>
             <Route path="/login" element={<LoginPage />} />

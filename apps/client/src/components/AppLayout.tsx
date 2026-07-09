@@ -8,7 +8,9 @@ import { ToastViewport } from "./ToastViewport";
 export function AppLayout() {
   const { modal } = useModal();
   const { pathname } = useLocation();
-  const showCartIndicator = pathname !== "/checkout" && pathname !== "/order-success";
+  const showCartIndicator = !["/checkout", "/order-success", "/orders", "/profile"].includes(
+    pathname,
+  );
 
   return (
     <ThemeProvider>

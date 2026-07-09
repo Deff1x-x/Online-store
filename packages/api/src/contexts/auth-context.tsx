@@ -5,7 +5,7 @@ export type AuthContextValue = {
   authManager: AuthManager;
   accessToken: string | null;
   login: (payload: LoginPayload, mode?: LoginMode) => Promise<AuthResponse>;
-  logout: () => void;
+  logout: (options?: { redirect?: boolean }) => void;
   refresh: () => Promise<boolean>;
   setToken: (accessToken: string, refreshToken?: string) => void;
   clearToken: () => void;
@@ -31,7 +31,7 @@ export function AuthProvider({ authManager, children }: AuthProviderProps) {
       authManager,
       accessToken,
       login: (payload, mode) => authManager.login(payload, mode),
-      logout: () => authManager.logout(),
+      logout: (options) => authManager.logout(options),
       refresh: () => authManager.refresh(),
       setToken: (token, refreshToken) => authManager.setToken(token, refreshToken),
       clearToken: () => authManager.clearToken(),

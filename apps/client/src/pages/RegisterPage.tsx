@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Card, Checkbox, H1, Spinner, TextField } from "@koz/ui";
 import { useApi, useLoading, useToast } from "@koz/api";
-import { getOtpExpiry, saveAuthFlow } from "../auth/auth-flow";
+import { getAuthReturnPath, getOtpExpiry, saveAuthFlow } from "../auth/auth-flow";
 import { validateName, validatePhone } from "../auth/validation";
 
 export function RegisterPage() {
@@ -11,6 +11,7 @@ export function RegisterPage() {
   const { modules } = useApi();
   const { showToast } = useToast();
   const { isLoading, withLoading } = useLoading();
+  const returnTo = getAuthReturnPath(searchParams.get("returnTo"));
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("+7");
   const [privacyPolicy, setPrivacyPolicy] = useState(false);
@@ -50,7 +51,7 @@ export function RegisterPage() {
         privacyPolicy,
         termsOfService,
         expiresAt: getOtpExpiry(response.expires_in_seconds),
-        returnTo: searchParams.get("returnTo") === "/checkout" ? "/checkout" : undefined,
+        returnTo,
       });
       navigate("/otp");
     } catch {
@@ -112,7 +113,7 @@ export function RegisterPage() {
       </form>
       <p className="auth-switch">
         Уже есть аккаунт?{" "}
-        <Link to={searchParams.get("returnTo") === "/checkout" ? "/login?returnTo=/checkout" : "/login"}>
+        <Link to={returnTo ? `/login?returnTo=${returnTo}` : "/login"}>
           Войти
         </Link>
       </p>

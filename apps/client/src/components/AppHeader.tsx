@@ -21,6 +21,14 @@ export function AppHeader() {
           <span>Корзина</span>
           {itemCount > 0 ? <span className="cart-count">{itemCount}</span> : null}
         </NavLink>
+        <NavLink to="/orders">
+          <Icon name="package" size={20} />
+          <span>Заказы</span>
+        </NavLink>
+        <NavLink to="/profile">
+          <Icon name="user" size={20} />
+          <span>Профиль</span>
+        </NavLink>
       </nav>
     </Header>
   );

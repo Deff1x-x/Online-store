@@ -3,6 +3,8 @@ import { SessionStorageAdapter } from "@koz/api";
 const AUTH_FLOW_STORAGE_KEY = "koz.client.auth-flow.v1";
 const sessionStorageAdapter = new SessionStorageAdapter();
 
+export type AuthReturnPath = "/checkout" | "/orders" | "/profile";
+
 export type AuthFlow = {
   intent: "login" | "register";
   phone: string;
@@ -10,8 +12,14 @@ export type AuthFlow = {
   name?: string;
   privacyPolicy?: boolean;
   termsOfService?: boolean;
-  returnTo?: string;
+  returnTo?: AuthReturnPath;
 };
+
+export function getAuthReturnPath(value: string | null): AuthReturnPath | undefined {
+  return value === "/checkout" || value === "/orders" || value === "/profile"
+    ? value
+    : undefined;
+}
 
 export function readAuthFlow(): AuthFlow | null {
   const serialized = sessionStorageAdapter.getItem(AUTH_FLOW_STORAGE_KEY);
@@ -27,7 +35,12 @@ export function readAuthFlow(): AuthFlow | null {
       clearAuthFlow();
       return null;
     }
-    return parsed as AuthFlow;
+    return {
+      ...parsed,
+      returnTo: getAuthReturnPath(
+        typeof parsed.returnTo === "string" ? parsed.returnTo : null,
+      ),
+    } as AuthFlow;
   } catch {
     clearAuthFlow();
     return null;

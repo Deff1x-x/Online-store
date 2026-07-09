@@ -15,7 +15,7 @@ export function createOrdersApi(client: ApiClient) {
     payOnline: <T = ApiRecord>(id: string | number) => client.post<ApiEntityResponse<T>>(`/orders/${id}/pay-online`),
     validatePromo: <T = ApiRecord, TPayload = ApiRecord>(id: string | number, payload: TPayload) =>
       client.post<ApiEntityResponse<T>, TPayload>(`/orders/${id}/validate-promo`, payload),
-    listMy: <T = ApiRecord>(query?: QueryParams) => client.get<ApiListResponse<T>>("/my-orders", { query }),
+    listMy: <T = ApiRecord>(query?: QueryParams) => client.get<ApiEntityResponse<T>>("/my-orders", { query }),
     getMy: <T = ApiRecord>(id: string | number) => client.get<ApiEntityResponse<T>>(`/my-orders/${id}`),
   };
 }

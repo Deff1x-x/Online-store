@@ -23,6 +23,7 @@ import {
   Store,
   Trash2,
   Truck,
+  UserRound,
   X,
 } from "lucide-react";
 
@@ -38,6 +39,7 @@ const iconMap = {
   chevronLeft: ChevronLeft,
   chevronRight: ChevronRight,
   close: X,
+  croissant: Croissant,
   loader: Loader2,
   menu: Menu,
   milk: Milk,
@@ -49,6 +51,7 @@ const iconMap = {
   store: Store,
   trash: Trash2,
   truck: Truck,
+  user: UserRound,
   gift: Gift,
 };
 

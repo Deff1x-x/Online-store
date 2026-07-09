@@ -247,7 +247,9 @@ export function Dialog(props: DialogProps) {
   return <Modal {...props} />;
 }
 
-export type ToastProps = PropsWithChildren<HTMLAttributes<HTMLDivElement> & { tone?: Tone; title?: ReactNode }>;
+export type ToastProps = PropsWithChildren<
+  Omit<HTMLAttributes<HTMLDivElement>, "title"> & { tone?: Tone; title?: ReactNode }
+>;
 
 export function Toast({ tone = "neutral", title, children, className, ...props }: ToastProps) {
   return (

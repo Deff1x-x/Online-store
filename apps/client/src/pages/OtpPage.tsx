@@ -88,7 +88,7 @@ export function OtpPage() {
       });
 
       clearAuthFlow();
-      navigate(flow.returnTo === "/checkout" ? "/checkout" : "/shop", { replace: true });
+      navigate(flow.returnTo ?? "/shop", { replace: true });
     } catch (error) {
       if (error instanceof APIError && error.code === "consents_required") {
         showToast({
@@ -117,7 +117,10 @@ export function OtpPage() {
     }
   };
 
-  const backPath = flow.intent === "register" ? "/register" : "/login";
+  const baseBackPath = flow.intent === "register" ? "/register" : "/login";
+  const backPath = flow.returnTo
+    ? `${baseBackPath}?returnTo=${flow.returnTo}`
+    : baseBackPath;
 
   return (
     <Card className="auth-card" elevated>
