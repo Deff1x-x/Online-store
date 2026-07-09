@@ -1,0 +1,17 @@
+{
+  "name": "Клуб Оптовых Цен",
+  "short_name": "КОЦ",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#9CCD23",
+  "background_color": "#F4F4F2",
+  "icons": [
+    {
+      "src": "/icons/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
