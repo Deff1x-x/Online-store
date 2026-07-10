@@ -102,6 +102,47 @@ export type AdminStoreInventoryPayload = {
   is_visible: boolean;
 };
 
+export type AdminPromocodeDiscountType = "fixed_amount" | "percentage";
+
+export type AdminPromocode = {
+  id: string;
+  store_id: string | null;
+  code: string;
+  discount_type: AdminPromocodeDiscountType;
+  discount_value: string | number;
+  min_order_value: string | number;
+  max_uses: number | null;
+  usage_per_customer: number;
+  valid_from: string | null;
+  valid_until: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminPromocodesResponse = {
+  promo_codes: AdminPromocode[];
+};
+
+export type AdminPromocodeResponse = {
+  promo_code: AdminPromocode;
+};
+
+export type AdminPromocodeCreatePayload = {
+  code: string;
+  discount_type: AdminPromocodeDiscountType;
+  discount_value: number;
+  store_id?: string | null;
+  min_order_value?: number;
+  max_uses?: number | null;
+  usage_per_customer?: number;
+  valid_from?: string | null;
+  valid_until?: string | null;
+  is_active?: boolean;
+};
+
+export type AdminPromocodeUpdatePayload = Partial<AdminPromocodeCreatePayload>;
+
 export function createAdminCatalogApi(client: ApiClient) {
   return {
     getStores: (query?: QueryParams) => client.get<AdminStoresResponse>("/admin/catalog/stores", { query }),
@@ -139,14 +180,14 @@ export function createAdminCatalogApi(client: ApiClient) {
         `/admin/catalog/stores/${storeId}/inventory/${productId}/incoming`,
         payload,
       ),
-    getPromoCodes: <T = ApiRecord>(query?: QueryParams) =>
-      client.get<ApiListResponse<T>>("/admin/catalog/promo-codes", { query }),
-    createPromoCode: <T = ApiRecord, TPayload = ApiRecord>(payload: TPayload) =>
-      client.post<ApiEntityResponse<T>, TPayload>("/admin/catalog/promo-codes", payload),
-    updatePromoCode: <T = ApiRecord, TPayload = ApiRecord>(id: string | number, payload: TPayload) =>
-      client.put<ApiEntityResponse<T>, TPayload>(`/admin/catalog/promo-codes/${id}`, payload),
-    deletePromoCode: <T = ApiRecord>(id: string | number) =>
-      client.delete<ApiEntityResponse<T>>(`/admin/catalog/promo-codes/${id}`),
+    getPromoCodes: (query?: QueryParams) =>
+      client.get<AdminPromocodesResponse>("/admin/catalog/promo-codes", { query }),
+    createPromoCode: (payload: AdminPromocodeCreatePayload) =>
+      client.post<AdminPromocodeResponse, AdminPromocodeCreatePayload>("/admin/catalog/promo-codes", payload),
+    updatePromoCode: (id: string | number, payload: AdminPromocodeUpdatePayload) =>
+      client.put<AdminPromocodeResponse, AdminPromocodeUpdatePayload>(`/admin/catalog/promo-codes/${id}`, payload),
+    deletePromoCode: (id: string | number) =>
+      client.delete<AdminPromocodeResponse>(`/admin/catalog/promo-codes/${id}`),
     getDeliverySettings: <T = ApiRecord>(storeId: string | number) =>
       client.get<ApiEntityResponse<T>>(`/admin/catalog/delivery-settings/${storeId}`),
     upsertDeliverySettings: <T = ApiRecord, TPayload = ApiRecord>(storeId: string | number, payload: TPayload) =>
