@@ -11,23 +11,7 @@ import {
   Table,
   TextField,
 } from "@koz/ui";
-import { formatMoney, useApi, useToast } from "@koz/api";
-
-type DeliverySettings = {
-  min_order_value_for_free_delivery?: string | number;
-  delivery_fee?: string | number;
-  ordering_open_hour?: string | number;
-  ordering_close_hour?: string | number;
-};
-
-type Store = {
-  id: string | number;
-  name?: string;
-  address?: string;
-  subscribers_count?: number;
-  coverage_count?: number;
-  delivery_settings?: DeliverySettings | null;
-};
+import { formatMoney, useApi, useToast, type AdminDeliverySettings, type AdminStore } from "@koz/api";
 
 type StoreDraft = {
   name: string;
@@ -49,7 +33,7 @@ type DeliverySettingsDraft = {
 const emptyStoreDraft: StoreDraft = { name: "", address: "" };
 const emptyCoverageDraft: CoverageDraft = { address: "", entrance_count: "" };
 
-const deliverySettingsDraft = (settings?: DeliverySettings | null): DeliverySettingsDraft => ({
+const deliverySettingsDraft = (settings?: AdminDeliverySettings | null): DeliverySettingsDraft => ({
   min_order_value_for_free_delivery: settings?.min_order_value_for_free_delivery === undefined
     ? ""
     : String(settings.min_order_value_for_free_delivery),
@@ -58,7 +42,7 @@ const deliverySettingsDraft = (settings?: DeliverySettings | null): DeliverySett
   ordering_close_hour: settings?.ordering_close_hour === undefined ? "" : String(settings.ordering_close_hour),
 });
 
-const deliverySettingsLabel = (settings?: DeliverySettings | null) => {
+const deliverySettingsLabel = (settings?: AdminDeliverySettings | null) => {
   if (!settings) return "—";
 
   return (
@@ -75,14 +59,14 @@ const deliverySettingsLabel = (settings?: DeliverySettings | null) => {
 export default function AdminCatalogPage() {
   const { modules } = useApi();
   const { showToast } = useToast();
-  const [stores, setStores] = useState<Store[]>([]);
+  const [stores, setStores] = useState<AdminStore[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [storeDraft, setStoreDraft] = useState<StoreDraft>(emptyStoreDraft);
-  const [coverageStore, setCoverageStore] = useState<Store | null>(null);
+  const [coverageStore, setCoverageStore] = useState<AdminStore | null>(null);
   const [coverageDraft, setCoverageDraft] = useState<CoverageDraft>(emptyCoverageDraft);
-  const [settingsStore, setSettingsStore] = useState<Store | null>(null);
+  const [settingsStore, setSettingsStore] = useState<AdminStore | null>(null);
   const [settingsDraft, setSettingsDraft] = useState<DeliverySettingsDraft>(deliverySettingsDraft());
   const [busyAction, setBusyAction] = useState<"create" | "coverage" | "settings" | null>(null);
 
@@ -91,8 +75,8 @@ export default function AdminCatalogPage() {
     setLoadError(false);
 
     try {
-      const result = (await modules.adminCatalogApi.getStores()) as unknown as { stores?: Store[] };
-      setStores(result.stores ?? []);
+      const response = await modules.adminCatalogApi.getStores();
+      setStores(response.stores);
     } catch {
       setLoadError(true);
     } finally {
@@ -129,7 +113,7 @@ export default function AdminCatalogPage() {
     }
   };
 
-  const openCoverage = (store: Store) => {
+  const openCoverage = (store: AdminStore) => {
     setCoverageStore(store);
     setCoverageDraft(emptyCoverageDraft);
   };
@@ -170,7 +154,7 @@ export default function AdminCatalogPage() {
     }
   };
 
-  const openSettings = (store: Store) => {
+  const openSettings = (store: AdminStore) => {
     setSettingsStore(store);
     setSettingsDraft(deliverySettingsDraft(store.delivery_settings));
   };
@@ -218,32 +202,32 @@ export default function AdminCatalogPage() {
       {
         key: "store",
         header: "Точка",
-        render: (store: Store) => <strong>{store.name ?? "—"}</strong>,
+        render: (store: AdminStore) => <strong>{store.name}</strong>,
       },
       {
         key: "address",
         header: "Адрес",
-        render: (store: Store) => store.address ?? "—",
+        render: (store: AdminStore) => store.address,
       },
       {
         key: "subscribers",
         header: "Подписчики",
-        render: (store: Store) => store.subscribers_count ?? 0,
+        render: (store: AdminStore) => store.subscribers_count,
       },
       {
         key: "coverage",
         header: "Дома",
-        render: (store: Store) => store.coverage_count ?? 0,
+        render: (store: AdminStore) => store.coverage_count,
       },
       {
         key: "delivery_settings",
         header: "Настройки доставки",
-        render: (store: Store) => deliverySettingsLabel(store.delivery_settings),
+        render: (store: AdminStore) => deliverySettingsLabel(store.delivery_settings),
       },
       {
         key: "actions",
         header: "Действия",
-        render: (store: Store) => (
+        render: (store: AdminStore) => (
           <div className="admin-store-actions">
             <Button type="button" size="sm" variant="secondary" onClick={() => openCoverage(store)}>
               Привязать дом
@@ -332,7 +316,7 @@ export default function AdminCatalogPage() {
 
       <Modal
         open={Boolean(coverageStore)}
-        title={coverageStore ? `Привязать дом: ${coverageStore.name ?? "точка"}` : undefined}
+        title={coverageStore ? `Привязать дом: ${coverageStore.name}` : undefined}
         onClose={closeCoverage}
         footer={
           <div className="manager-modal-actions">
@@ -367,7 +351,7 @@ export default function AdminCatalogPage() {
 
       <Modal
         open={Boolean(settingsStore)}
-        title={settingsStore ? `Доставка: ${settingsStore.name ?? "точка"}` : undefined}
+        title={settingsStore ? `Доставка: ${settingsStore.name}` : undefined}
         onClose={closeSettings}
         footer={
           <div className="manager-modal-actions">

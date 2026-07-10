@@ -1,9 +1,40 @@
 import type { ApiClient, QueryParams } from "../client";
 import type { ApiEntityResponse, ApiListResponse, ApiRecord } from "./shared";
 
+export type AdminDeliverySettings = {
+  id: string;
+  store_id: string;
+  min_order_value_for_free_delivery: string | number;
+  delivery_fee: string | number;
+  ordering_open_hour: number;
+  ordering_close_hour: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminStore = {
+  id: string;
+  name: string;
+  address: string;
+  location: string | null;
+  operating_hours: string | null;
+  delivery_time_min: number | null;
+  delivery_time_max: number | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  delivery_settings: AdminDeliverySettings | null;
+  coverage_count: number;
+  subscribers_count: number;
+};
+
+export type AdminStoresResponse = {
+  stores: AdminStore[];
+};
+
 export function createAdminCatalogApi(client: ApiClient) {
   return {
-    getStores: <T = ApiRecord>(query?: QueryParams) => client.get<ApiListResponse<T>>("/admin/catalog/stores", { query }),
+    getStores: (query?: QueryParams) => client.get<AdminStoresResponse>("/admin/catalog/stores", { query }),
     createStore: <T = ApiRecord, TPayload = ApiRecord>(payload: TPayload) =>
       client.post<ApiEntityResponse<T>, TPayload>("/admin/catalog/stores", payload),
     updateStore: <T = ApiRecord, TPayload = ApiRecord>(id: string | number, payload: TPayload) =>
