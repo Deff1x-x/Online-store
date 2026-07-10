@@ -42,7 +42,7 @@ export function LoginPage() {
         return;
       }
 
-      if (role?.startsWith("admin_")) {
+      if (role === "admin_catalog" || role === "admin_customers" || role === "admin_operations") {
         navigate("/admin", { replace: true });
         return;
       }
