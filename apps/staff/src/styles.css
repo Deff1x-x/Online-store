@@ -419,6 +419,23 @@ a {
   display: none;
 }
 
+.admin-delivery-settings,
+.admin-store-form,
+.admin-store-actions {
+  display: grid;
+  gap: var(--koz-space-1);
+}
+
+.admin-delivery-settings {
+  min-width: 210px;
+  color: var(--koz-theme-muted);
+  font-size: var(--koz-font-size-1);
+}
+
+.admin-store-actions {
+  min-width: 150px;
+}
+
 @media (max-width: 1023px) {
   .staff-topbar {
     min-height: 80px;

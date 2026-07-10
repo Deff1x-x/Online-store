@@ -1,10 +1,10 @@
 import { H1 } from "@koz/ui";
 
-export default function AdminOperationsPage() {
+export default function AdminProductsPage() {
   return (
     <section className="manager-screen">
       <div className="manager-heading">
-        <H1>Отчёты</H1>
+        <H1>Товары</H1>
       </div>
     </section>
   );

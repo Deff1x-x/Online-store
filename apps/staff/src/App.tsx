@@ -12,9 +12,11 @@ import { ManagerOrdersPage } from "./pages/ManagerOrdersPage";
 import { ManagerStockPage } from "./pages/ManagerStockPage";
 import "./styles.css";
 
-const AdminCatalogPage = lazy(() => import("./pages/AdminCatalogPage"));
+const AdminStoresPage = lazy(() => import("./pages/AdminCatalogPage"));
 const AdminCustomersPage = lazy(() => import("./pages/AdminCustomersPage"));
-const AdminOperationsPage = lazy(() => import("./pages/AdminOperationsPage"));
+const AdminReportsPage = lazy(() => import("./pages/AdminOperationsPage"));
+const AdminProductsPage = lazy(() => import("./pages/AdminProductsPage"));
+const AdminPromosPage = lazy(() => import("./pages/AdminPromosPage"));
 
 type SessionUser = {
   id?: string | number;
@@ -26,9 +28,9 @@ type SessionUser = {
 type AdminRole = "admin_catalog" | "admin_customers" | "admin_operations";
 
 const adminRouteByRole: Record<AdminRole, string> = {
-  admin_catalog: "/admin/catalog",
+  admin_catalog: "/admin/stores",
   admin_customers: "/admin/customers",
-  admin_operations: "/admin/operations",
+  admin_operations: "/admin/reports",
 };
 
 function isAdminRole(role?: string): role is AdminRole {
@@ -137,11 +139,31 @@ export default function App() {
         />
         <Route path="/admin" element={<AdminIndexRedirect />} />
         <Route
-          path="/admin/catalog"
+          path="/admin/stores"
           element={
             <RequireAdmin role="admin_catalog">
               <Suspense fallback={<AdminRouteLoading />}>
-                <AdminCatalogPage />
+                <AdminStoresPage />
+              </Suspense>
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <RequireAdmin role="admin_catalog">
+              <Suspense fallback={<AdminRouteLoading />}>
+                <AdminProductsPage />
+              </Suspense>
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/promos"
+          element={
+            <RequireAdmin role="admin_catalog">
+              <Suspense fallback={<AdminRouteLoading />}>
+                <AdminPromosPage />
               </Suspense>
             </RequireAdmin>
           }
@@ -157,11 +179,11 @@ export default function App() {
           }
         />
         <Route
-          path="/admin/operations"
+          path="/admin/reports"
           element={
             <RequireAdmin role="admin_operations">
               <Suspense fallback={<AdminRouteLoading />}>
-                <AdminOperationsPage />
+                <AdminReportsPage />
               </Suspense>
             </RequireAdmin>
           }

@@ -5,6 +5,7 @@ import { useAuth } from "@koz/api";
 type AdminShellProps = {
   user: {
     email?: string;
+    role?: string;
   } | null;
   children: JSX.Element;
 };
@@ -17,6 +18,13 @@ const today = new Intl.DateTimeFormat("ru-RU", {
 
 export function AdminShell({ user, children }: AdminShellProps) {
   const { logout } = useAuth();
+  const navigation = [
+    { to: "/admin/stores", label: "Точки", roles: ["admin_catalog"] },
+    { to: "/admin/products", label: "Товары", roles: ["admin_catalog"] },
+    { to: "/admin/promos", label: "Промокоды", roles: ["admin_catalog"] },
+    { to: "/admin/customers", label: "Клиенты", roles: ["admin_customers"] },
+    { to: "/admin/reports", label: "Отчёты", roles: ["admin_operations"] },
+  ];
 
   const header = (
     <Header className="staff-topbar">
@@ -36,9 +44,13 @@ export function AdminShell({ user, children }: AdminShellProps) {
     <Sidebar className="staff-sidebar">
       <div className="staff-sidebar__title">Администрирование</div>
       <nav className="staff-nav" aria-label="Навигация администратора">
-        <NavLink to="/admin/catalog">Каталог</NavLink>
-        <NavLink to="/admin/customers">Клиенты</NavLink>
-        <NavLink to="/admin/operations">Операции</NavLink>
+        {navigation
+          .filter((item) => user?.role && item.roles.includes(user.role))
+          .map((item) => (
+            <NavLink key={item.to} to={item.to}>
+              {item.label}
+            </NavLink>
+          ))}
       </nav>
       <Button
         type="button"
