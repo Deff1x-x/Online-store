@@ -436,6 +436,16 @@ a {
   min-width: 150px;
 }
 
+.admin-products-inventory {
+  display: grid;
+  gap: var(--koz-space-3);
+}
+
+.admin-products-inventory .manager-panel__heading {
+  align-items: end;
+  margin-bottom: 0;
+}
+
 @media (max-width: 1023px) {
   .staff-topbar {
     min-height: 80px;
