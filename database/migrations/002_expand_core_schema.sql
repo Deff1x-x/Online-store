@@ -1,3 +1,28 @@
+-- schema.sql is the current canonical schema.  The remaining statements below
+-- upgrade the older pre-delivery_status layout only.
+SELECT (
+    TO_REGTYPE('delivery_status') IS NOT NULL
+    AND EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = CURRENT_SCHEMA()
+          AND table_name = 'orders'
+          AND column_name = 'delivery_status'
+          AND udt_name = 'delivery_status'
+    )
+    AND EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = CURRENT_SCHEMA()
+          AND table_name = 'subscriptions'
+          AND column_name = 'customer_id'
+    )
+) AS expand_core_schema_is_current \gset
+
+\if :expand_core_schema_is_current
+\echo '002_expand_core_schema.sql: current schema detected; legacy expansion skipped.'
+\else
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 DO $$
@@ -300,10 +325,7 @@ CREATE INDEX IF NOT EXISTS idx_orders_delivery_status ON orders(delivery_status)
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_payments_order_id ON payments(order_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_user_store ON subscriptions(user_id, store_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_customer_store_unique
-    ON subscriptions(customer_id, store_id)
-    WHERE customer_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_subscriptions_customer_id ON subscriptions(customer_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_next_billing_date ON subscriptions(next_billing_date);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
 CREATE INDEX IF NOT EXISTS idx_promo_codes_store_active ON promo_codes(store_id, is_active);
@@ -312,3 +334,5 @@ CREATE INDEX IF NOT EXISTS idx_order_status_history_order_id ON order_status_his
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_notification_queue_status_scheduled ON notification_queue(status, scheduled_at);
+
+\endif
