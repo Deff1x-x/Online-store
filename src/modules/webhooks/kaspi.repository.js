@@ -18,10 +18,11 @@ export const withTransaction = async (callback) => {
 
 export const findPaymentByIdForUpdate = async (client, paymentId) => {
   const result = await client.query(
-    `SELECT *
-     FROM payments
-     WHERE id = $1
-     FOR UPDATE`,
+    `SELECT p.*, o.payment_status AS order_payment_status
+     FROM payments p
+     JOIN orders o ON o.id = p.order_id
+     WHERE p.id = $1
+     FOR UPDATE OF p, o`,
     [paymentId],
   );
 
@@ -30,12 +31,13 @@ export const findPaymentByIdForUpdate = async (client, paymentId) => {
 
 export const findPaymentByTransactionIdForUpdate = async (client, transactionId) => {
   const result = await client.query(
-    `SELECT *
-     FROM payments
-     WHERE provider_payload ->> 'transaction_id' = $1
-     ORDER BY created_at DESC
+    `SELECT p.*, o.payment_status AS order_payment_status
+     FROM payments p
+     JOIN orders o ON o.id = p.order_id
+     WHERE p.provider_payload ->> 'transaction_id' = $1
+     ORDER BY p.created_at DESC
      LIMIT 1
-     FOR UPDATE`,
+     FOR UPDATE OF p, o`,
     [transactionId],
   );
 
@@ -54,6 +56,7 @@ export const completePayment = async (client, { paymentId, webhookPayload }) => 
          ),
          updated_at = NOW()
      WHERE id = $1
+       AND status = 'pending'
      RETURNING *`,
     [paymentId, JSON.stringify(webhookPayload || {})],
   );
@@ -62,11 +65,15 @@ export const completePayment = async (client, { paymentId, webhookPayload }) => 
 };
 
 export const markOrderOnlinePaid = async (client, orderId) => {
-  await client.query(
+  const result = await client.query(
     `UPDATE orders
      SET payment_status = 'online_paid',
          updated_at = NOW()
-     WHERE id = $1`,
+     WHERE id = $1
+       AND payment_status = 'pending'
+     RETURNING id`,
     [orderId],
   );
+
+  return result.rows[0] || null;
 };

@@ -136,7 +136,9 @@ export const createOtpChallenge = ({ phone }) => {
   const code = generateOtpCode();
   saveOtpCode(normalizedPhone, code);
 
-  console.log(`SMS OTP for ${normalizedPhone}: ${code}`);
+  if (env.nodeEnv === 'development') {
+    console.log(`SMS OTP for ${normalizedPhone}: ${code}`);
+  }
 
   return {
     message: 'OTP code has been sent',
