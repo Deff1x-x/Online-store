@@ -1,0 +1,35 @@
+using Koz.Application.Auth;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Koz.Api.Controllers;
+
+[ApiController]
+[Route("api/auth")]
+public sealed class AuthController(AuthService authService) : ControllerBase
+{
+    [HttpPost("otp")]
+    [ProducesResponseType<OtpResponse>(StatusCodes.Status200OK)]
+    public ActionResult<OtpResponse> CreateOtp([FromBody] OtpRequest request) => Ok(authService.CreateOtpChallenge(request));
+
+    [HttpPost("register")]
+    [ProducesResponseType<CustomerAuthResponse>(StatusCodes.Status201Created)]
+    public async Task<ActionResult<CustomerAuthResponse>> Register([FromBody] RegisterCustomerRequest request, CancellationToken cancellationToken) =>
+        StatusCode(StatusCodes.Status201Created, await authService.RegisterCustomerAsync(request, RequestContext(), cancellationToken));
+
+    [HttpPost("login")]
+    [ProducesResponseType<CustomerAuthResponse>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<CustomerAuthResponse>> LoginCustomer([FromBody] CustomerLoginRequest request, CancellationToken cancellationToken) =>
+        Ok(await authService.LoginCustomerAsync(request, RequestContext(), cancellationToken));
+
+    [HttpPost("staff/login")]
+    [ProducesResponseType<StaffAuthResponse>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<StaffAuthResponse>> LoginStaff([FromBody] StaffLoginRequest request, CancellationToken cancellationToken) =>
+        Ok(await authService.LoginStaffAsync(request, cancellationToken));
+
+    [HttpPost("refresh")]
+    [ProducesResponseType<CustomerAuthResponse>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<CustomerAuthResponse>> Refresh([FromBody] RefreshRequest request, CancellationToken cancellationToken) =>
+        Ok(await authService.RefreshAsync(request, RequestContext(), cancellationToken));
+
+    private RequestContext RequestContext() => new(HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString());
+}

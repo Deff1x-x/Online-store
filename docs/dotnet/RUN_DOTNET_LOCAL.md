@@ -19,7 +19,7 @@ The Node-compatible variables take precedence over appsettings:
 | `DATABASE_NAME` | `Database:Name` / `Database__Name` |
 | `DATABASE_USER` | `Database:User` / `Database__User` |
 | `DATABASE_PASSWORD` | `Database:Password` / `Database__Password` |
-| `JWT_SECRET` | reserved for the future Auth module; it is not consumed in NET-0 |
+| `JWT_SECRET` | required for Auth in production; development uses the same non-production fallback as Node only when it is absent |
 
 `Database:ValidateOnStartup` defaults to `true`; it runs `SELECT 1` with Npgsql and logs only host, port and database — never the password. Development CORS permits exactly `http://localhost:5173` and `http://localhost:5174`. Production origins must be supplied through `Cors__AllowedOrigins__0`, etc.; credentials are not enabled.
 
@@ -40,17 +40,35 @@ $env:DATABASE_PORT = '5432'
 $env:DATABASE_NAME = 'online_store'
 $env:DATABASE_USER = 'postgres'
 $env:DATABASE_PASSWORD = '<local password>'
+$env:JWT_SECRET = '<development secret>'
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
 
 dotnet run --project backend-dotnet/src/Koz.Api/Koz.Api.csproj
 Invoke-RestMethod http://localhost:5000/api/health
 ```
 
-The local launch profile binds the .NET API to `http://localhost:5000`; Node remains on `http://localhost:3000`. Start Node in one terminal (`npm.cmd start`) and the .NET API in another. Do not point either Vite app at port 5000 in NET-0.
+The local launch profile binds the .NET API to `http://localhost:5000`; Node remains on `http://localhost:3000`. Start Node in one terminal (`npm.cmd start`) and the .NET API in another. Do not point either Vite app at port 5000 in NET-1.
 
-Swagger UI is available only in Development at `http://localhost:5000/swagger`; it is an aid, not the contract source. The OpenAPI surface currently contains only health.
+Swagger UI is available only in Development at `http://localhost:5000/swagger`; it is an aid, not the contract source. The OpenAPI surface contains health and the NET-1 Auth endpoints only.
 
-## Integration database test
+## Auth smoke checks (NET-1)
+
+Do not point the frontend at port 5000. Use a separate PowerShell terminal after starting the .NET API:
+
+```powershell
+$otp = @{ phone = 'customer-phone' } | ConvertTo-Json
+Invoke-RestMethod http://localhost:5000/api/auth/otp -Method Post -ContentType 'application/json' -Body $otp
+
+$staff = @{ email = 'manager@koz.kz'; password = '<seed password>' } | ConvertTo-Json
+Invoke-RestMethod http://localhost:5000/api/auth/staff/login -Method Post -ContentType 'application/json' -Body $staff
+
+$refresh = @{ refresh_token = '<opaque refresh token>' } | ConvertTo-Json
+Invoke-RestMethod http://localhost:5000/api/auth/refresh -Method Post -ContentType 'application/json' -Body $refresh
+```
+
+Customer login and registration use the current OTP contract. The OTP is logged only in `Development`; never copy a real token, OTP or secret into a tracked file. Production requires a non-development `JWT_SECRET` of at least 32 characters.
+
+## Legacy NET-0 integration database check
 
 Use an isolated database, never a shared development database:
 
@@ -60,3 +78,5 @@ dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.cspro
 ```
 
 Without that variable the integration test is explicitly skipped; API contract tests still run without PostgreSQL by disabling startup validation in their test host.
+
+For NET-1 Auth tests, create the separate `koz_dotnet_net1_test` database from the same schema, 001/002 migrations and `database/seed.sql`, then set `KOZ_NET1_TEST_CONNECTION_STRING`. The Auth suite refuses every other database name.

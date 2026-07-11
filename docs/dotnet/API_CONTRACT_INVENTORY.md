@@ -39,11 +39,11 @@
 
 | Method, URL | Auth / roles | Query, request DTO | Response DTO; nullable / enum; status | Node implementation | Consumer | Priority |
 |---|---|---|---|---|---|---|
-| POST `/api/auth/otp` | no | `{phone:string}` | `OtpResponse {message,expires_in_seconds}`; **200** | `auth.controller/service/repository` | `auth-api.ts` | NET-2 |
-| POST `/api/auth/register` | no | `{phone,code,name,store_id,privacy_policy,terms_of_service}` | `CustomerAuthResponse`; `user.phone/email/name/store_id/customer_id` nullable/optional as declared; role enum; **201** | same | `auth-api.ts` | NET-2 |
-| POST `/api/auth/login` | no | `CustomerLoginPayload` (`auth-manager.ts`) | `CustomerAuthResponse` incl. `refresh_token`; **200** | same | `auth-api.ts` | NET-2 |
-| POST `/api/auth/staff/login` | no | `StaffLoginPayload` (`auth-manager.ts`) | `StaffAuthResponse`; `email/name/store_id` nullable/optional; staff role enum; **200** | same | `auth-api.ts` | NET-2 |
-| POST `/api/auth/refresh` | no | `{refresh_token:string}` | `CustomerAuthResponse`; **200** | same | `auth-api.ts` | NET-2 |
+| POST `/api/auth/otp` | no | `{phone:string}` | `OtpResponse {message,expires_in_seconds}`; **200** | `auth.controller/service/repository` | `auth-api.ts` | **NET-1 implemented; Node↔.NET parity test** |
+| POST `/api/auth/register` | no | `{phone,code,name,store_id,privacy_policy,terms_of_service}` | `CustomerAuthResponse`; `user.phone/email/name/store_id/customer_id` nullable/optional as declared; role enum; **201** | same | `auth-api.ts` | **NET-1 implemented; Node↔.NET parity test** |
+| POST `/api/auth/login` | no | `CustomerLoginPayload` (`auth-manager.ts`) | `CustomerAuthResponse` incl. `refresh_token`; **200** | same | `auth-api.ts` | **NET-1 implemented; Node↔.NET parity test** |
+| POST `/api/auth/staff/login` | no | `StaffLoginPayload` (`auth-manager.ts`) | `StaffAuthResponse`; `email/name/store_id` nullable/optional; staff role enum; **200** | same | `auth-api.ts` | **NET-1 implemented; Node↔.NET parity test** |
+| POST `/api/auth/refresh` | no | `{refresh_token:string}` | `CustomerAuthResponse`; **200** | same | `auth-api.ts` | **NET-1 implemented; Node↔.NET parity test** |
 
 ## Products, profile, addresses and subscriptions
 

@@ -1,7 +1,10 @@
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Koz.Api.Configuration;
+using Koz.Api.Auth;
+using Koz.Application.Auth;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -45,6 +48,20 @@ public sealed class HealthEndpointTests : IClassFixture<KozApiFactory>
         Assert.Equal(new[] { "code", "message" }, payload.RootElement.EnumerateObject().Select(property => property.Name).Order());
         Assert.Equal("Route not found", payload.RootElement.GetProperty("message").GetString());
         Assert.Equal("route_not_found", payload.RootElement.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Malformed_auth_json_preserves_node_error_wrapper_without_problem_details()
+    {
+        using var body = new StringContent("{", Encoding.UTF8, "application/json");
+        var response = await _client.PostAsync("/api/auth/otp", body, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(new[] { "code", "message" }, payload.RootElement.EnumerateObject().Select(property => property.Name).Order());
+        Assert.Equal("Internal server error", payload.RootElement.GetProperty("message").GetString());
+        Assert.Equal("internal_error", payload.RootElement.GetProperty("code").GetString());
     }
 
     [Theory]
@@ -122,6 +139,17 @@ public sealed class DatabaseConfigurationTests
         Assert.DoesNotContain(password, exception.Message, StringComparison.Ordinal);
         Assert.Equal("Database port must be an integer between 1 and 65535.", exception.Message);
     }
+
+    [Fact]
+    public void Production_without_jwt_secret_fails_without_disclosing_a_secret()
+    {
+        var configuration = new ConfigurationBuilder().Build();
+
+        var exception = Assert.Throws<AuthContractException>(() => JwtOptions.Load(configuration, new ProductionHostEnvironment()));
+
+        Assert.Equal("jwt_secret_invalid", exception.Code);
+        Assert.DoesNotContain(JwtOptions.DevelopmentSecret, exception.Message, StringComparison.Ordinal);
+    }
 }
 
 public sealed class KozApiFactory : WebApplicationFactory<Program>
@@ -141,5 +169,16 @@ public sealed class ProductionKozApiFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Production");
         builder.UseSetting("Database:Password", "test-password");
         builder.UseSetting("Database:ValidateOnStartup", "false");
+        builder.UseSetting("Jwt:Secret", "production-test-jwt-secret-with-at-least-32-characters");
     }
+}
+
+public sealed class ProductionHostEnvironment : IWebHostEnvironment
+{
+    public string EnvironmentName { get; set; } = "Production";
+    public string ApplicationName { get; set; } = "Koz.Api.Tests";
+    public string WebRootPath { get; set; } = string.Empty;
+    public Microsoft.Extensions.FileProviders.IFileProvider WebRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
+    public string ContentRootPath { get; set; } = string.Empty;
+    public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
 }
