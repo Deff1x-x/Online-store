@@ -1,5 +1,6 @@
 using Koz.Api.Configuration;
 using Koz.Application.Auth;
+using Koz.Application.Read;
 
 namespace Koz.Api.Middleware;
 
@@ -20,6 +21,17 @@ public sealed class NodeCompatibleExceptionMiddleware(RequestDelegate next, ILog
             }
 
             logger.LogInformation("Auth contract error {Code} while handling {Method} {Path}.", exception.Code, context.Request.Method, context.Request.Path);
+            await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
+        }
+        catch (ReadContractException exception)
+        {
+            if (context.Response.HasStarted)
+            {
+                logger.LogWarning(exception, "Read contract error occurred after the response started for {Method} {Path}.", context.Request.Method, context.Request.Path);
+                throw;
+            }
+
+            logger.LogInformation("Read contract error {Code} while handling {Method} {Path}.", exception.Code, context.Request.Method, context.Request.Path);
             await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
         }
         catch (DatabaseConfigurationException exception)

@@ -68,6 +68,18 @@ Invoke-RestMethod http://localhost:5000/api/auth/refresh -Method Post -ContentTy
 
 Customer login and registration use the current OTP contract. The OTP is logged only in `Development`; never copy a real token, OTP or secret into a tracked file. Production requires a non-development `JWT_SECRET` of at least 32 characters.
 
+## Public read smoke checks (NET-2A)
+
+NET-2A adds only the mounted Node reads: `GET /api/products/store/:store_id`, `GET /api/my-profile` and `GET /api/my-addresses`. There is deliberately no .NET `GET /api/products`, `GET /api/products/:id` or `GET /api/my-addresses/:id`, because Node does not mount those GET routes.
+
+```powershell
+Invoke-RestMethod http://localhost:5000/api/products/store/11111111-1111-1111-1111-111111111111
+
+$headers = @{ Authorization = 'Bearer <NET-1 customer JWT>' }
+Invoke-RestMethod http://localhost:5000/api/my-profile -Headers $headers
+Invoke-RestMethod http://localhost:5000/api/my-addresses -Headers $headers
+```
+
 ## Legacy NET-0 integration database check
 
 Use an isolated database, never a shared development database:
@@ -80,3 +92,5 @@ dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.cspro
 Without that variable the integration test is explicitly skipped; API contract tests still run without PostgreSQL by disabling startup validation in their test host.
 
 For NET-1 Auth tests, create the separate `koz_dotnet_net1_test` database from the same schema, 001/002 migrations and `database/seed.sql`, then set `KOZ_NET1_TEST_CONNECTION_STRING`. The Auth suite refuses every other database name.
+
+For NET-2A tests, create the separate `koz_dotnet_net2a_test` database from the same schema, 001/002 migrations and `database/seed.sql`, then set `KOZ_NET2A_TEST_CONNECTION_STRING`. The NET-2A suite refuses every other database name.

@@ -49,12 +49,12 @@
 
 | Method, URL | Auth / roles | Query, request DTO | Response DTO; nullable / enum; status | Node implementation | Consumer | Priority |
 |---|---|---|---|---|---|---|
-| GET `/api/products/store/:store_id` | no | — | `StoreCatalogResponse {products:StoreCatalogProduct[]}`; `selling_price:null`; category/unit/inventory-status enum; **200** | `products.controller/service/repository` | `products-api.ts` | NET-3 |
+| GET `/api/products/store/:store_id` | no | — | `StoreCatalogResponse {products:StoreCatalogProduct[]}`; `selling_price:null`; category/unit/inventory-status enum; **200** | `products.controller/service/repository` | `products-api.ts` | **NET-2A implemented; Node↔.NET parity test** |
 | POST `/api/products` | JWT `admin_catalog` | `ProductPayload` | `ProductResponse {product:Product}`; category/unit enum; **201** | same | `products-api.ts` | NET-8 |
 | POST `/api/products/link-store` | JWT `admin_catalog` | `{store_id,product_id,quantity,selling_price?:number|null}` | `StoreInventoryResponse`; `selling_price`, `last_delivery_date` nullable; inventory-status enum; **200/201** (service chooses) | same | `products-api.ts` | NET-8 |
-| GET `/api/my-profile` | JWT `customer` | — | `ProfileResponse`; user name/email and subscription dates nullable; subscription-status enum; **200** | `my-profile.controller/service/repository` | `profile-api.ts` | NET-4 |
+| GET `/api/my-profile` | JWT `customer` | — | `ProfileResponse`; user name/email and subscription dates nullable; subscription-status enum; **200** | `my-profile.controller/service/repository` | `profile-api.ts` | **NET-2A implemented; Node↔.NET parity test** |
 | PUT `/api/my-profile` | JWT `customer` | `{name?:string|null,email?:string|null}` | `ProfileResponse`; same nullability; **200** | same | `profile-api.ts` | NET-4 |
-| GET `/api/my-addresses` | JWT `customer` | — | `AddressesResponse`; entrance/floor/apartment/entrance_code/entrance_count nullable; **200** | `my-addresses.controller/service/repository` | `addresses-api.ts` | NET-4 |
+| GET `/api/my-addresses` | JWT `customer` | — | `AddressesResponse`; entrance/floor/apartment/entrance_code/entrance_count nullable; **200** | `my-addresses.controller/service/repository` | `addresses-api.ts` | **NET-2A implemented; Node↔.NET parity test** |
 | POST `/api/my-addresses` | JWT `customer` | `{store_coverage_id,entrance?,floor?,apartment?,entrance_code?,is_default?}` | `AddressResponse {message,address}`; address nullable fields above; **201** | same | `addresses-api.ts` | NET-4 |
 | DELETE `/api/my-addresses/:id` | JWT `customer` | — | `MessageResponse {message}`; **200** | same | `addresses-api.ts` | NET-4 |
 | GET `/api/subscriptions` | JWT `admin_catalog|admin_operations|admin_customers` | `store_id?`, `status?:SubscriptionStatus` | `SubscriptionsResponse`; `expires_at,next_billing_date,cancelled_at,customer_name,customer_email` nullable; **200** | `subscriptions.controller/service/repository` | `subscriptions-api.ts` | NET-7 |

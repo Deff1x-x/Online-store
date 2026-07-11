@@ -13,6 +13,7 @@ using Xunit.Sdk;
 
 namespace Koz.IntegrationTests;
 
+[Collection("NodeApi")]
 public sealed class Net1AuthIntegrationTests
 {
     private const string TestDatabaseName = "koz_dotnet_net1_test";
