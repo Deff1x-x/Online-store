@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Badge,
   Body,
@@ -6,6 +6,7 @@ import {
   Card,
   Checkbox,
   Dropdown,
+  EmptyState,
   H1,
   Icon,
   Loader,
@@ -55,7 +56,7 @@ type ConfirmAction = {
   description: string;
   confirmLabel: string;
   variant?: "primary" | "danger";
-  run: () => Promise<void>;
+  run: () => Promise<boolean>;
 };
 
 const statusOptions = [
@@ -120,6 +121,7 @@ export function ManagerOrdersPage() {
   const [orders, setOrders] = useState<ManagerOrder[]>([]);
   const [status, setStatus] = useState<OrderStatus | "">("");
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [busyOrderId, setBusyOrderId] = useState<string | number | null>(null);
   const [actualWeightOrder, setActualWeightOrder] = useState<ManagerOrder | null>(null);
   const [actualWeight, setActualWeight] = useState("");
@@ -127,15 +129,49 @@ export function ManagerOrdersPage() {
   const [pickChecklistOrder, setPickChecklistOrder] = useState<ManagerOrder | null>(null);
   const [checkedPickItems, setCheckedPickItems] = useState<Record<string, boolean>>({});
   const [posConfirmed, setPosConfirmed] = useState<Record<string, boolean>>({});
+  const isMountedRef = useRef(false);
+  const ordersRequestIdRef = useRef(0);
+  const backgroundRequestIdRef = useRef(0);
+  const hasLoadedRef = useRef(false);
+  const actionInFlightRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      ordersRequestIdRef.current += 1;
+      backgroundRequestIdRef.current = 0;
+    };
+  }, []);
 
   const loadOrders = useCallback(
-    async (silent = false) => {
-      if (!silent) setIsLoading(true);
+    async ({ background = false, force = false }: { background?: boolean; force?: boolean } = {}) => {
+      if (background && backgroundRequestIdRef.current !== 0 && !force) return;
+
+      const requestId = ++ordersRequestIdRef.current;
+      const showInitialLoader = !hasLoadedRef.current;
+      if (background) backgroundRequestIdRef.current = requestId;
+      if (showInitialLoader) setIsLoading(true);
+      if (!background) setLoadError(false);
+
       try {
         const result = await modules.managerApi.getOrders(status ? { status } : undefined);
-        setOrders(result.orders ?? []);
+        if (isMountedRef.current && requestId === ordersRequestIdRef.current) {
+          setOrders(result.orders);
+          setLoadError(false);
+          hasLoadedRef.current = true;
+        }
+      } catch {
+        if (isMountedRef.current && requestId === ordersRequestIdRef.current) {
+          setLoadError(true);
+        }
       } finally {
-        if (!silent) setIsLoading(false);
+        if (background && backgroundRequestIdRef.current === requestId) {
+          backgroundRequestIdRef.current = 0;
+        }
+        if (isMountedRef.current && requestId === ordersRequestIdRef.current && showInitialLoader) {
+          setIsLoading(false);
+        }
       }
     },
     [modules.managerApi, status],
@@ -143,37 +179,61 @@ export function ManagerOrdersPage() {
 
   useEffect(() => {
     void loadOrders();
-    const interval = window.setInterval(() => void loadOrders(true), 30000);
-    return () => window.clearInterval(interval);
+    const interval = window.setInterval(() => void loadOrders({ background: true }), 30000);
+    return () => {
+      window.clearInterval(interval);
+      ordersRequestIdRef.current += 1;
+      backgroundRequestIdRef.current = 0;
+    };
   }, [loadOrders]);
 
-  const updateStatus = async (order: ManagerOrder, nextStatus: OrderStatus) => {
-    setBusyOrderId(order.id);
+  const updateStatus = useCallback(async (order: ManagerOrder, nextStatus: OrderStatus) => {
+    if (actionInFlightRef.current) return false;
+
+    actionInFlightRef.current = true;
+    if (isMountedRef.current) setBusyOrderId(order.id);
+    ordersRequestIdRef.current += 1;
     try {
       const result = await modules.managerApi.updateOrderStatus(order.id, {
         delivery_status: nextStatus,
       });
-      setOrders((current) => mergeOrder(current, result.order));
-      await loadOrders(true);
+      if (isMountedRef.current) setOrders((current) => mergeOrder(current, result.order));
+      await loadOrders({ background: true, force: true });
+      if (!isMountedRef.current) return true;
       showToast({ message: "Статус заказа обновлён.", tone: "success" });
+      return true;
+    } catch {
+      return false;
     } finally {
-      setBusyOrderId(null);
+      actionInFlightRef.current = false;
+      if (isMountedRef.current) setBusyOrderId(null);
     }
-  };
+  }, [loadOrders, modules.managerApi, showToast]);
 
-  const pickOrder = async (order: ManagerOrder) => {
-    setBusyOrderId(order.id);
+  const pickOrder = useCallback(async (order: ManagerOrder) => {
+    if (actionInFlightRef.current) return false;
+
+    actionInFlightRef.current = true;
+    if (isMountedRef.current) setBusyOrderId(order.id);
+    ordersRequestIdRef.current += 1;
     try {
       const result = await modules.managerApi.pickOrder(order.id);
-      setOrders((current) => mergeOrder(current, result.order));
-      await loadOrders(true);
-      setPickChecklistOrder(null);
-      setCheckedPickItems({});
+      if (isMountedRef.current) {
+        setOrders((current) => mergeOrder(current, result.order));
+        setPickChecklistOrder(null);
+        setCheckedPickItems({});
+      }
+      await loadOrders({ background: true, force: true });
+      if (!isMountedRef.current) return true;
       showToast({ message: "Заказ переведён в сборку.", tone: "success" });
+      return true;
+    } catch {
+      return false;
     } finally {
-      setBusyOrderId(null);
+      actionInFlightRef.current = false;
+      if (isMountedRef.current) setBusyOrderId(null);
     }
-  };
+  }, [loadOrders, modules.managerApi, showToast]);
 
   const openPickChecklist = useCallback((order: ManagerOrder) => {
     setPickChecklistOrder(order);
@@ -186,8 +246,8 @@ export function ManagerOrdersPage() {
     setCheckedPickItems({});
   }, [busyOrderId, pickChecklistOrder]);
 
-  const submitActualWeight = async () => {
-    if (!actualWeightOrder) return;
+  const submitActualWeight = useCallback(async () => {
+    if (!actualWeightOrder || actionInFlightRef.current) return;
     const numericWeight = Number(actualWeight);
 
     if (!Number.isFinite(numericWeight) || numericWeight <= 0) {
@@ -195,14 +255,20 @@ export function ManagerOrdersPage() {
       return;
     }
 
-    setBusyOrderId(actualWeightOrder.id);
+    actionInFlightRef.current = true;
+    if (isMountedRef.current) setBusyOrderId(actualWeightOrder.id);
+    ordersRequestIdRef.current += 1;
     try {
       const result = await modules.managerApi.recordActualWeight(actualWeightOrder.id, {
         actual_weight: numericWeight,
       });
-      setOrders((current) => mergeOrder(current, result.order));
-      setActualWeightOrder(null);
-      setActualWeight("");
+      if (isMountedRef.current) {
+        setOrders((current) => mergeOrder(current, result.order));
+        setActualWeightOrder(null);
+        setActualWeight("");
+      }
+      await loadOrders({ background: true, force: true });
+      if (!isMountedRef.current) return;
       showToast({
         title: "Вес пересчитан",
         message: `Итого ${formatMoney(result.order.final_total)}, списано онлайн ${formatMoney(
@@ -210,10 +276,13 @@ export function ManagerOrdersPage() {
         )}, доплата POS ${formatMoney(result.order.pos_terminal_topup)}.`,
         tone: "success",
       });
+    } catch {
+      // ApiErrorBridge already exposes the request error without closing the modal.
     } finally {
-      setBusyOrderId(null);
+      actionInFlightRef.current = false;
+      if (isMountedRef.current) setBusyOrderId(null);
     }
-  };
+  }, [actualWeight, actualWeightOrder, loadOrders, modules.managerApi, showToast]);
 
   const pickChecklistItems = pickChecklistOrder?.items ?? [];
   const hasPickChecklistItems = pickChecklistItems.length > 0;
@@ -427,7 +496,7 @@ export function ManagerOrdersPage() {
         },
       },
     ],
-    [busyOrderId, openPickChecklist, posConfirmed, showToast],
+    [busyOrderId, openPickChecklist, posConfirmed, showToast, updateStatus],
   );
 
   return (
@@ -447,6 +516,12 @@ export function ManagerOrdersPage() {
 
       {isLoading ? (
         <Loader label="Загружаем заказы" />
+      ) : loadError && orders.length === 0 ? (
+        <EmptyState
+          title="Не удалось загрузить заказы"
+          description="Повторите попытку."
+          action={<Button type="button" onClick={() => void loadOrders({ force: true })}>Повторить</Button>}
+        />
       ) : (
         <Card className="manager-panel manager-panel--table">
           <Table columns={columns} data={orders} getRowKey={(order) => String(order.id)} emptyText="Заказов нет" />
@@ -520,10 +595,18 @@ export function ManagerOrdersPage() {
       <Modal
         open={Boolean(actualWeightOrder)}
         title={actualWeightOrder ? `Фактический вес #${actualWeightOrder.id}` : undefined}
-        onClose={() => setActualWeightOrder(null)}
+        onClose={() => {
+          if (actualWeightOrder && busyOrderId === actualWeightOrder.id) return;
+          setActualWeightOrder(null);
+        }}
         footer={
           <div className="manager-modal-actions">
-            <Button type="button" variant="secondary" onClick={() => setActualWeightOrder(null)}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={Boolean(actualWeightOrder && busyOrderId === actualWeightOrder.id)}
+              onClick={() => setActualWeightOrder(null)}
+            >
               Закрыть
             </Button>
             <Button
@@ -550,19 +633,23 @@ export function ManagerOrdersPage() {
       <Modal
         open={Boolean(confirmAction)}
         title={confirmAction?.title}
-        onClose={() => setConfirmAction(null)}
+        onClose={() => {
+          if (!actionInFlightRef.current) setConfirmAction(null);
+        }}
         footer={
           <div className="manager-modal-actions">
-            <Button type="button" variant="secondary" onClick={() => setConfirmAction(null)}>
+            <Button type="button" variant="secondary" disabled={busyOrderId !== null} onClick={() => setConfirmAction(null)}>
               Назад
             </Button>
             <Button
               type="button"
               variant={confirmAction?.variant === "danger" ? "danger" : "primary"}
+              disabled={busyOrderId !== null}
               onClick={async () => {
                 const action = confirmAction;
-                setConfirmAction(null);
-                await action?.run();
+                if (!action) return;
+                const completed = await action.run();
+                if (completed && isMountedRef.current) setConfirmAction(null);
               }}
             >
               {confirmAction?.confirmLabel}

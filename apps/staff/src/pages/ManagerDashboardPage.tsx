@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Badge, Body, Card, H1, Loader } from "@koz/ui";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Badge, Body, Button, Card, EmptyState, H1, Loader } from "@koz/ui";
 import { formatMoney, useApi, type ManagerAnalytics } from "@koz/api";
 
 const metricGroups = [
@@ -14,27 +14,64 @@ export function ManagerDashboardPage() {
   const { modules } = useApi();
   const [analytics, setAnalytics] = useState<ManagerAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const isMountedRef = useRef(false);
+  const requestIdRef = useRef(0);
+  const isRequestInFlightRef = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      try {
-        const result = await modules.managerApi.getAnalytics();
-        if (!cancelled) setAnalytics(result.analytics ?? {});
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-
-    void load();
+    isMountedRef.current = true;
     return () => {
-      cancelled = true;
+      isMountedRef.current = false;
+      requestIdRef.current += 1;
     };
+  }, []);
+
+  const loadDashboard = useCallback(async () => {
+    if (isRequestInFlightRef.current) return;
+
+    const requestId = ++requestIdRef.current;
+    isRequestInFlightRef.current = true;
+    setIsLoading(true);
+    setLoadError(false);
+
+    try {
+      const result = await modules.managerApi.getAnalytics();
+      if (isMountedRef.current && requestId === requestIdRef.current) {
+        setAnalytics(result.analytics);
+      }
+    } catch {
+      if (isMountedRef.current && requestId === requestIdRef.current) {
+        setLoadError(true);
+      }
+    } finally {
+      if (requestId === requestIdRef.current) {
+        isRequestInFlightRef.current = false;
+        if (isMountedRef.current) setIsLoading(false);
+      }
+    }
   }, [modules.managerApi]);
+
+  useEffect(() => {
+    void loadDashboard();
+    return () => {
+      requestIdRef.current += 1;
+      isRequestInFlightRef.current = false;
+    };
+  }, [loadDashboard]);
 
   if (isLoading) {
     return <Loader label="Загружаем аналитику" />;
+  }
+
+  if (loadError) {
+    return (
+      <EmptyState
+        title="Не удалось загрузить аналитику"
+        description="Повторите попытку."
+        action={<Button type="button" onClick={() => void loadDashboard()}>Повторить</Button>}
+      />
+    );
   }
 
   const moneyMetrics = [

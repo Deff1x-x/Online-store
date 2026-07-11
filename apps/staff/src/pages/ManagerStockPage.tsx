@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Badge,
   Body,
   Button,
   Card,
+  EmptyState,
   H1,
   Icon,
   Loader,
@@ -49,50 +50,108 @@ const draftFromItem = (item: InventoryItem): InventoryDraft => ({
   quantity: item.quantity === undefined ? "" : String(item.quantity),
 });
 
+const mergeInventoryItem = (current: InventoryItem[], updated: InventoryItem) =>
+  current.map((item) => (String(item.product_id) === String(updated.product_id) ? { ...item, ...updated } : item));
+
 export function ManagerStockPage() {
   const { modules } = useApi();
   const { showToast } = useToast();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [drafts, setDrafts] = useState<Record<string, InventoryDraft>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [busyProductId, setBusyProductId] = useState<string | number | null>(null);
   const [incomingItem, setIncomingItem] = useState<InventoryItem | null>(null);
   const [incomingQuantity, setIncomingQuantity] = useState("");
+  const isMountedRef = useRef(false);
+  const inventoryRequestIdRef = useRef(0);
+  const backgroundRequestIdRef = useRef(0);
+  const hasLoadedRef = useRef(false);
+  const actionInFlightRef = useRef(false);
 
-  const loadInventory = useCallback(async () => {
-    setIsLoading(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      inventoryRequestIdRef.current += 1;
+      backgroundRequestIdRef.current = 0;
+    };
+  }, []);
+
+  const loadInventory = useCallback(async ({ background = false, force = false }: { background?: boolean; force?: boolean } = {}) => {
+    if (background && backgroundRequestIdRef.current !== 0 && !force) return;
+
+    const requestId = ++inventoryRequestIdRef.current;
+    const showInitialLoader = !hasLoadedRef.current;
+    if (background) backgroundRequestIdRef.current = requestId;
+    if (showInitialLoader) setIsLoading(true);
+    if (!background) setLoadError(false);
+
     try {
       const result = await modules.managerApi.getInventory();
-      const nextInventory = result.inventory ?? [];
-      setInventory(nextInventory);
-      setDrafts(
-        nextInventory.reduce<Record<string, InventoryDraft>>((accumulator, item) => {
-          accumulator[String(item.product_id)] = draftFromItem(item);
-          return accumulator;
-        }, {}),
-      );
+      const nextInventory = result.inventory;
+      if (isMountedRef.current && requestId === inventoryRequestIdRef.current) {
+        setInventory(nextInventory);
+        setDrafts(
+          nextInventory.reduce<Record<string, InventoryDraft>>((accumulator, item) => {
+            accumulator[String(item.product_id)] = draftFromItem(item);
+            return accumulator;
+          }, {}),
+        );
+        setLoadError(false);
+        hasLoadedRef.current = true;
+      }
+    } catch {
+      if (isMountedRef.current && requestId === inventoryRequestIdRef.current) {
+        setLoadError(true);
+      }
     } finally {
-      setIsLoading(false);
+      if (background && backgroundRequestIdRef.current === requestId) {
+        backgroundRequestIdRef.current = 0;
+      }
+      if (isMountedRef.current && requestId === inventoryRequestIdRef.current && showInitialLoader) {
+        setIsLoading(false);
+      }
     }
   }, [modules.managerApi]);
 
   useEffect(() => {
     void loadInventory();
+    return () => {
+      inventoryRequestIdRef.current += 1;
+      backgroundRequestIdRef.current = 0;
+    };
   }, [loadInventory]);
 
-  const updateInventory = async (
+  const updateInventory = useCallback(async (
     item: InventoryItem,
     payload: { is_visible?: boolean; selling_price?: number | null; quantity?: number },
   ) => {
-    setBusyProductId(item.product_id);
+    if (actionInFlightRef.current) return false;
+
+    actionInFlightRef.current = true;
+    if (isMountedRef.current) setBusyProductId(item.product_id);
+    inventoryRequestIdRef.current += 1;
     try {
-      await modules.managerApi.updateInventory(item.product_id, payload);
-      await loadInventory();
+      const result = await modules.managerApi.updateInventory(item.product_id, payload);
+      if (isMountedRef.current) {
+        setInventory((current) => mergeInventoryItem(current, result.inventory));
+        setDrafts((current) => ({
+          ...current,
+          [String(result.inventory.product_id)]: draftFromItem(result.inventory),
+        }));
+      }
+      await loadInventory({ background: true, force: true });
+      if (!isMountedRef.current) return true;
       showToast({ message: "Остаток обновлён.", tone: "success" });
+      return true;
+    } catch {
+      return false;
     } finally {
-      setBusyProductId(null);
+      actionInFlightRef.current = false;
+      if (isMountedRef.current) setBusyProductId(null);
     }
-  };
+  }, [loadInventory, modules.managerApi, showToast]);
 
   const saveSellingPrice = async (item: InventoryItem) => {
     const draft = drafts[String(item.product_id)]?.selling_price ?? "";
@@ -124,8 +183,8 @@ export function ManagerStockPage() {
     await updateInventory(item, { quantity });
   };
 
-  const submitIncoming = async () => {
-    if (!incomingItem) return;
+  const submitIncoming = useCallback(async () => {
+    if (!incomingItem || actionInFlightRef.current) return;
     const quantity = Number(incomingQuantity);
 
     if (!Number.isFinite(quantity) || quantity <= 0) {
@@ -133,17 +192,30 @@ export function ManagerStockPage() {
       return;
     }
 
-    setBusyProductId(incomingItem.product_id);
+    actionInFlightRef.current = true;
+    if (isMountedRef.current) setBusyProductId(incomingItem.product_id);
+    inventoryRequestIdRef.current += 1;
     try {
-      await modules.managerApi.receiveInventory(incomingItem.product_id, { quantity });
+      const result = await modules.managerApi.receiveInventory(incomingItem.product_id, { quantity });
+      if (isMountedRef.current) {
+        setInventory((current) => mergeInventoryItem(current, result.inventory));
+        setDrafts((current) => ({
+          ...current,
+          [String(result.inventory.product_id)]: draftFromItem(result.inventory),
+        }));
+      }
+      await loadInventory({ background: true, force: true });
+      if (!isMountedRef.current) return;
       setIncomingItem(null);
       setIncomingQuantity("");
-      await loadInventory();
       showToast({ message: "Приход добавлен.", tone: "success" });
+    } catch {
+      // ApiErrorBridge already exposes the request error without closing the modal.
     } finally {
-      setBusyProductId(null);
+      actionInFlightRef.current = false;
+      if (isMountedRef.current) setBusyProductId(null);
     }
-  };
+  }, [incomingItem, incomingQuantity, loadInventory, modules.managerApi, showToast]);
 
   const columns = useMemo(
     () => [
@@ -277,6 +349,12 @@ export function ManagerStockPage() {
 
       {isLoading ? (
         <Loader label="Загружаем остатки" />
+      ) : loadError && inventory.length === 0 ? (
+        <EmptyState
+          title="Не удалось загрузить остатки"
+          description="Повторите попытку."
+          action={<Button type="button" onClick={() => void loadInventory({ force: true })}>Повторить</Button>}
+        />
       ) : (
         <Card className="manager-panel manager-panel--table">
           <Table
@@ -291,13 +369,26 @@ export function ManagerStockPage() {
       <Modal
         open={Boolean(incomingItem)}
         title={incomingItem ? `Приход: ${incomingItem.name}` : undefined}
-        onClose={() => setIncomingItem(null)}
+        onClose={() => {
+          if (incomingItem && busyProductId === incomingItem.product_id) return;
+          setIncomingItem(null);
+        }}
         footer={
           <div className="manager-modal-actions">
-            <Button type="button" variant="secondary" onClick={() => setIncomingItem(null)}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={Boolean(incomingItem && busyProductId === incomingItem.product_id)}
+              onClick={() => setIncomingItem(null)}
+            >
               Закрыть
             </Button>
-            <Button type="button" onClick={() => void submitIncoming()}>
+            <Button
+              type="button"
+              disabled={Boolean(incomingItem && busyProductId === incomingItem.product_id)}
+              leftIcon={incomingItem && busyProductId === incomingItem.product_id ? <Spinner /> : undefined}
+              onClick={() => void submitIncoming()}
+            >
               Оприходовать
             </Button>
           </div>
