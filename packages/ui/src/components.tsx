@@ -331,7 +331,7 @@ export function Tabs({ items, value, onChange }: TabsProps) {
 
 export type DropdownProps = SelectHTMLAttributes<HTMLSelectElement> & {
   label?: ReactNode;
-  options: Array<{ label: ReactNode; value: string; disabled?: boolean }>;
+  options: ReadonlyArray<{ label: ReactNode; value: string; disabled?: boolean }>;
 };
 
 export function Dropdown({ label, options, id, className, ...props }: DropdownProps) {

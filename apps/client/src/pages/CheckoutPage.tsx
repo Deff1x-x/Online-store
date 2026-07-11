@@ -27,43 +27,6 @@ const DELIVERY_FEE = 500;
 const ONLINE_SHARE = 0.8;
 const HOUSE_OPTIONS = [{ label: "д. 4", value: STORE_COVERAGE_ID }];
 
-type AddressResponse = {
-  address: {
-    id: string;
-  };
-};
-
-type CreateOrderResponse = {
-  order_id: string;
-  order_number: string;
-  breakdown: {
-    subtotal: string | number;
-    discount_total?: string | number;
-    promo_discount?: string | number;
-    delivery_fee: string | number;
-    final_total: string | number;
-  };
-  payment_options: {
-    online: {
-      preauth_amount?: string | number;
-      amount?: string | number;
-      remainder_on_delivery?: string | number;
-    };
-  };
-  order?: {
-    final_total?: string | number;
-    total_amount?: string | number;
-    delivery_fee?: string | number;
-    discount_total?: string | number;
-    discount_amount?: string | number;
-    online_payment_amount?: string | number;
-    online_amount?: string | number;
-    pos_terminal_topup?: string | number;
-    pos_remainder_amount?: string | number;
-    fulfillment_window?: "same_day" | "next_morning";
-  };
-};
-
 type AddressErrors = {
   entrance?: string;
   floor?: string;
@@ -150,7 +113,7 @@ export function CheckoutPage() {
 
     try {
       setLoadingLabel("Сохраняем адрес");
-      const addressResponse = await modules.addressesApi.create<AddressResponse>({
+      const addressResponse = await modules.addressesApi.create({
         store_coverage_id: STORE_COVERAGE_ID,
         entrance: Number(entrance),
         floor: Number(floor),
@@ -160,7 +123,7 @@ export function CheckoutPage() {
       });
 
       setLoadingLabel("Создаём заказ");
-      const orderResponse = await modules.ordersApi.create<CreateOrderResponse>({
+      const orderResponse = await modules.ordersApi.create({
         payment_method: "online",
         delivery_address_id: addressResponse.address.id,
         items: items.map((item) => ({
@@ -172,29 +135,24 @@ export function CheckoutPage() {
 
       const preauthAmount = readBackendAmount(
         orderResponse.payment_options.online.preauth_amount,
-        orderResponse.payment_options.online.amount,
-        orderResponse.order?.online_payment_amount,
-        orderResponse.order?.online_amount,
+        orderResponse.order.online_payment_amount,
       );
       const finalOrderTotal = readBackendAmount(
         orderResponse.breakdown.final_total,
-        orderResponse.order?.final_total,
-        orderResponse.order?.total_amount,
+        orderResponse.order.final_total,
       );
       const deliveryOrderFee = readBackendAmount(
         orderResponse.breakdown.delivery_fee,
-        orderResponse.order?.delivery_fee,
+        orderResponse.order.delivery_fee,
       );
       const discountOrderTotal = readBackendAmount(
         orderResponse.breakdown.discount_total,
         orderResponse.breakdown.promo_discount,
-        orderResponse.order?.discount_total,
-        orderResponse.order?.discount_amount,
+        orderResponse.order.discount_total,
       );
       const posRemainderAmount = readBackendAmount(
         orderResponse.payment_options.online.remainder_on_delivery,
-        orderResponse.order?.pos_terminal_topup,
-        orderResponse.order?.pos_remainder_amount,
+        orderResponse.order.pos_terminal_topup,
       );
 
       if (preauthAmount === undefined) {
@@ -205,13 +163,13 @@ export function CheckoutPage() {
 
       saveOrderResult({
         orderId: orderResponse.order_id,
-        orderNumber: orderResponse.order_number,
+        orderNumber: orderResponse.order_number ?? orderResponse.order_id,
         preauthAmount,
         finalTotal: finalOrderTotal,
         deliveryFee: deliveryOrderFee,
         discountTotal: discountOrderTotal,
         posRemainderAmount,
-        fulfillmentWindow: orderResponse.order?.fulfillment_window ?? "same_day",
+        fulfillmentWindow: orderResponse.order.fulfillment_window,
       });
       clearCart();
       navigate("/order-success", { replace: true });

@@ -25,7 +25,7 @@ export function ShopPage() {
     const storeId = import.meta.env.VITE_STORE_ID ?? DEFAULT_STORE_ID;
 
     modules.productsApi
-      .getStoreProducts<StoreProduct>(storeId)
+      .getStoreProducts(storeId)
       .then((response) => {
         if (active) {
           setProducts(

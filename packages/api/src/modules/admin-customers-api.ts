@@ -1,5 +1,5 @@
-import type { ApiClient, QueryParams } from "../client";
-import type { ApiEntityResponse, ApiListResponse, ApiRecord } from "./shared";
+import type { ApiClient } from "../client";
+import type { ApiId, ApiMoney, Pagination, SubscriptionStatus } from "./shared";
 
 export type AdminCustomer = {
   id: string;
@@ -8,7 +8,7 @@ export type AdminCustomer = {
   name: string | null;
   phone: string;
   email: string | null;
-  subscription_status: "active" | "paused" | "cancelled" | "expired";
+  subscription_status: SubscriptionStatus;
   subscription_start_date: string | null;
   subscription_end_date: string | null;
   subscription_auto_renew: boolean;
@@ -72,9 +72,9 @@ export type AdminCustomerDetails = {
 export type AdminSubscription = {
   id: string;
   customer_id: string;
-  amount: string | number;
-  billing_period: string;
-  status: string;
+  amount: ApiMoney;
+  billing_period: "monthly" | "yearly";
+  status: SubscriptionStatus;
   expires_at: string | null;
   next_billing_date: string | null;
   auto_renew: boolean;
@@ -84,22 +84,27 @@ export type AdminSubscription = {
 };
 
 export type AdminSubscriptionResponse = { subscription: AdminSubscription };
+export type AdminSubscriptionsResponse = { subscriptions: AdminSubscription[] };
+export type AdminSubscriptionsQuery = { store_id?: ApiId; status?: SubscriptionStatus };
+export type ConsentLog = { user_id: ApiId; phone: string | null; name: string | null; consent_type: "privacy_policy" | "terms_of_service"; consented_at: string };
+export type ConsentLogsResponse = { audit_logs: ConsentLog[] };
+export type CustomerExportRow = AdminCustomer;
+export type CustomerExportResponse = { message: string; format: "rows"; generated_at: string; rows: CustomerExportRow[] };
 
 export function createAdminCustomersApi(client: ApiClient) {
   return {
     getCustomers: (query?: AdminCustomersQuery) => client.get<AdminCustomersResponse>("/admin/customers/customers", { query }),
-    getCustomer: (id: string | number) => client.get<AdminCustomerDetails>(`/admin/customers/customers/${id}`),
-    getSubscriptions: <T = ApiRecord>(query?: QueryParams) =>
-      client.get<ApiListResponse<T>>("/admin/customers/subscriptions", { query }),
-    renewSubscription: (id: string | number) =>
+    getCustomer: (id: ApiId) => client.get<AdminCustomerDetails>(`/admin/customers/customers/${id}`),
+    getSubscriptions: (query?: AdminSubscriptionsQuery) =>
+      client.get<AdminSubscriptionsResponse>("/admin/customers/subscriptions", { query }),
+    renewSubscription: (id: ApiId) =>
       client.put<AdminSubscriptionResponse>(`/admin/customers/customers/${id}/subscription/renew`),
-    cancelSubscription: (id: string | number) =>
-      client.put<AdminSubscriptionResponse>(`/admin/customers/customers/${id}/subscription/cancel`),
-    pauseSubscription: (id: string | number) =>
+    cancelSubscription: (id: ApiId, payload?: { immediate?: boolean }) =>
+      client.put<AdminSubscriptionResponse, { immediate?: boolean }>(`/admin/customers/customers/${id}/subscription/cancel`, payload),
+    pauseSubscription: (id: ApiId) =>
       client.put<AdminSubscriptionResponse>(`/admin/customers/customers/${id}/subscription/pause`),
-    getConsentLogs: <T = ApiRecord>(query?: QueryParams) =>
-      client.get<ApiListResponse<T>>("/admin/customers/audit-logs/consents", { query }),
-    exportCustomers: <T = ApiRecord, TPayload = ApiRecord>(payload?: TPayload) =>
-      client.post<ApiEntityResponse<T>, TPayload>("/admin/customers/export/customers", payload),
+    getConsentLogs: () => client.get<ConsentLogsResponse>("/admin/customers/audit-logs/consents"),
+    exportCustomers: (query?: AdminCustomersQuery) =>
+      client.post<CustomerExportResponse>("/admin/customers/export/customers", undefined, { query }),
   };
 }

@@ -14,9 +14,9 @@ import {
   Table,
   TextField,
 } from "@koz/ui";
-import { formatMoney, useApi, useToast } from "@koz/api";
+import { formatMoney, useApi, useToast, type DeliveryStatus } from "@koz/api";
 
-type OrderStatus = "new" | "picked" | "in_delivery" | "delivered" | "failed" | "cancelled";
+type OrderStatus = DeliveryStatus;
 
 type OrderItem = {
   id?: string | number;
@@ -29,11 +29,11 @@ type OrderItem = {
 };
 
 type DeliveryAddress = {
-  coverage_address?: string;
-  entrance?: string;
-  floor?: string;
-  apartment?: string;
-  entrance_code?: string;
+  coverage_address?: string | null;
+  entrance?: string | null;
+  floor?: string | null;
+  apartment?: string | null;
+  entrance_code?: string | null;
 };
 
 type ManagerOrder = {
@@ -118,7 +118,7 @@ export function ManagerOrdersPage() {
   const { modules } = useApi();
   const { showToast } = useToast();
   const [orders, setOrders] = useState<ManagerOrder[]>([]);
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState<OrderStatus | "">("");
   const [isLoading, setIsLoading] = useState(true);
   const [busyOrderId, setBusyOrderId] = useState<string | number | null>(null);
   const [actualWeightOrder, setActualWeightOrder] = useState<ManagerOrder | null>(null);
@@ -132,9 +132,7 @@ export function ManagerOrdersPage() {
     async (silent = false) => {
       if (!silent) setIsLoading(true);
       try {
-        const result = (await modules.managerApi.getOrders(status ? { status } : undefined)) as unknown as {
-          orders: ManagerOrder[];
-        };
+        const result = await modules.managerApi.getOrders(status ? { status } : undefined);
         setOrders(result.orders ?? []);
       } finally {
         if (!silent) setIsLoading(false);
@@ -152,9 +150,9 @@ export function ManagerOrdersPage() {
   const updateStatus = async (order: ManagerOrder, nextStatus: OrderStatus) => {
     setBusyOrderId(order.id);
     try {
-      const result = (await modules.managerApi.updateOrderStatus(order.id, {
+      const result = await modules.managerApi.updateOrderStatus(order.id, {
         delivery_status: nextStatus,
-      })) as unknown as { order: ManagerOrder };
+      });
       setOrders((current) => mergeOrder(current, result.order));
       await loadOrders(true);
       showToast({ message: "Статус заказа обновлён.", tone: "success" });
@@ -166,7 +164,7 @@ export function ManagerOrdersPage() {
   const pickOrder = async (order: ManagerOrder) => {
     setBusyOrderId(order.id);
     try {
-      const result = (await modules.managerApi.pickOrder(order.id)) as unknown as { order: ManagerOrder };
+      const result = await modules.managerApi.pickOrder(order.id);
       setOrders((current) => mergeOrder(current, result.order));
       await loadOrders(true);
       setPickChecklistOrder(null);
@@ -199,9 +197,9 @@ export function ManagerOrdersPage() {
 
     setBusyOrderId(actualWeightOrder.id);
     try {
-      const result = (await modules.managerApi.recordActualWeight(actualWeightOrder.id, {
+      const result = await modules.managerApi.recordActualWeight(actualWeightOrder.id, {
         actual_weight: numericWeight,
-      })) as unknown as { order: ManagerOrder };
+      });
       setOrders((current) => mergeOrder(current, result.order));
       setActualWeightOrder(null);
       setActualWeight("");
@@ -443,7 +441,7 @@ export function ManagerOrdersPage() {
           label="Статус"
           value={status}
           options={statusOptions}
-          onChange={(event) => setStatus(event.target.value)}
+          onChange={(event) => setStatus(event.target.value as OrderStatus | "")}
         />
       </div>
 

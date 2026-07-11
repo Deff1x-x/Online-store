@@ -22,11 +22,6 @@ const FREE = 5000;
 const DELIV = 500;
 const ONLINE_SHARE = 0.8;
 
-type ValidatePromoResponse = {
-  is_valid: boolean;
-  discount_amount: string | number;
-};
-
 export function CartPage() {
   const navigate = useNavigate();
   const { modules } = useApi();
@@ -71,7 +66,7 @@ export function CartPage() {
 
     try {
       const response = await withLoading(() =>
-        modules.promocodesApi.validate<ValidatePromoResponse>({
+        modules.promocodesApi.validate({
           promo_code: normalizedPromoCode,
           order_total: subtotal,
         }),

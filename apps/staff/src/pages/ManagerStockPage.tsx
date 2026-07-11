@@ -62,7 +62,7 @@ export function ManagerStockPage() {
   const loadInventory = useCallback(async () => {
     setIsLoading(true);
     try {
-      const result = (await modules.managerApi.getInventory()) as unknown as { inventory: InventoryItem[] };
+      const result = await modules.managerApi.getInventory();
       const nextInventory = result.inventory ?? [];
       setInventory(nextInventory);
       setDrafts(

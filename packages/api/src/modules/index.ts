@@ -12,6 +12,7 @@ import { createProductsApi } from "./products-api";
 import { createProfileApi } from "./profile-api";
 import { createPromocodesApi } from "./promocodes-api";
 import { createSubscriptionsApi } from "./subscriptions-api";
+import { createSystemApi } from "./system-api";
 
 export * from "./addresses-api";
 export * from "./admin-catalog-api";
@@ -27,6 +28,7 @@ export * from "./profile-api";
 export * from "./promocodes-api";
 export * from "./shared";
 export * from "./subscriptions-api";
+export * from "./system-api";
 
 export function createApiModules(client: ApiClient) {
   return {
@@ -43,6 +45,7 @@ export function createApiModules(client: ApiClient) {
     adminCatalogApi: createAdminCatalogApi(client),
     adminCustomersApi: createAdminCustomersApi(client),
     adminOperationsApi: createAdminOperationsApi(client),
+    systemApi: createSystemApi(client),
   };
 }
 

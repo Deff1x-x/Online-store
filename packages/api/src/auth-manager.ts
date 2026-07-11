@@ -18,8 +18,10 @@ export type AuthResponse = {
   user?: AuthUser;
 };
 
-export type LoginMode = "customer" | "staff" | "admin";
-export type LoginPayload = Record<string, unknown>;
+export type CustomerLoginPayload = { phone: string; code: string };
+export type StaffLoginPayload = { email: string; password: string };
+export type LoginMode = "customer" | "staff";
+export type LoginPayload = CustomerLoginPayload | StaffLoginPayload;
 
 export type AuthManagerOptions = {
   client?: ApiClient;
@@ -57,7 +59,7 @@ export class AuthManager {
   }
 
   async login(payload: LoginPayload, mode: LoginMode = "customer") {
-    const path = mode === "staff" ? "/auth/staff/login" : mode === "admin" ? "/auth/login-admin" : "/auth/login";
+    const path = mode === "staff" ? "/auth/staff/login" : "/auth/login";
     const result = await this.client.post<AuthResponse, LoginPayload>(path, payload, { auth: false });
     this.applyAuthResponse(result);
     return result;

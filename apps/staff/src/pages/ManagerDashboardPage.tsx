@@ -1,16 +1,6 @@
 import { useEffect, useState } from "react";
 import { Badge, Body, Card, H1, Loader } from "@koz/ui";
-import { formatMoney, useApi } from "@koz/api";
-
-type Analytics = {
-  funnel?: Record<string, number | string | undefined>;
-  gmv_delivered?: number | string;
-  pos_collected?: number | string;
-  avg_order_value?: number | string;
-  stopped_items?: number | string;
-  out_of_stock?: number | string;
-  low_stock?: number | string;
-};
+import { formatMoney, useApi, type ManagerAnalytics } from "@koz/api";
 
 const metricGroups = [
   { key: "new", label: "Новые" },
@@ -22,7 +12,7 @@ const metricGroups = [
 
 export function ManagerDashboardPage() {
   const { modules } = useApi();
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [analytics, setAnalytics] = useState<ManagerAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -30,7 +20,7 @@ export function ManagerDashboardPage() {
 
     const load = async () => {
       try {
-        const result = (await modules.managerApi.getAnalytics()) as unknown as { analytics: Analytics };
+        const result = await modules.managerApi.getAnalytics();
         if (!cancelled) setAnalytics(result.analytics ?? {});
       } finally {
         if (!cancelled) setIsLoading(false);

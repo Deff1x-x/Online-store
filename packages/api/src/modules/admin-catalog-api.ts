@@ -1,5 +1,5 @@
-import type { ApiClient, QueryParams } from "../client";
-import type { ApiEntityResponse, ApiListResponse, ApiRecord } from "./shared";
+import type { ApiClient } from "../client";
+import type { ApiId } from "./shared";
 
 export type AdminDeliverySettings = {
   id: string;
@@ -20,7 +20,7 @@ export type AdminStore = {
   operating_hours: string | null;
   delivery_time_min: number | null;
   delivery_time_max: number | null;
-  status: string;
+  status: "active" | "inactive" | "paused" | "closed";
   created_at: string;
   updated_at: string;
   delivery_settings: AdminDeliverySettings | null;
@@ -93,13 +93,53 @@ export type AdminStoreInventoryResponse = {
 };
 
 export type AdminStoreInventoryResponseItem = {
-  inventory: AdminStoreInventory;
+  inventory: StoreInventoryRecord;
+};
+
+export type StoreInventoryRecord = {
+  id: ApiId;
+  store_id: ApiId;
+  product_id: ApiId;
+  quantity: string | number;
+  stock_quantity: number;
+  selling_price: string | number | null;
+  is_visible: boolean;
+  status: "available" | "low_stock" | "out_of_stock";
+  last_delivery_date: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type AdminStoreInventoryPayload = {
-  selling_price: number | null;
-  quantity: number;
-  is_visible: boolean;
+  selling_price?: number | null;
+  quantity?: number;
+  is_visible?: boolean;
+};
+
+export type AdminStorePayload = {
+  name: string;
+  address: string;
+  location?: string | null;
+  operating_hours?: string | null;
+  delivery_time_min?: number | null;
+  delivery_time_max?: number | null;
+  status?: AdminStore["status"];
+};
+
+export type AdminCoverage = {
+  id: ApiId;
+  store_id: ApiId;
+  address: string;
+  entrance_count: number | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminCoveragePayload = {
+  store_id: ApiId;
+  address: string;
+  entrance_count?: number | null;
 };
 
 export type AdminPromocodeDiscountType = "fixed_amount" | "percentage";
@@ -143,54 +183,60 @@ export type AdminPromocodeCreatePayload = {
 
 export type AdminPromocodeUpdatePayload = Partial<AdminPromocodeCreatePayload>;
 
+export type AdminStoreResponse = { store: AdminStore };
+export type AdminCoverageResponse = { coverage: AdminCoverage };
+export type AdminDeliverySettingsResponse = { delivery_settings: AdminDeliverySettings };
+export type AdminInventoryResponse = { inventory: StoreInventoryRecord };
+export type AdminInventoryIncomingPayload = { quantity: number };
+export type AdminDeliverySettingsPayload = {
+  min_order_value_for_free_delivery?: number | null;
+  delivery_fee?: number | null;
+  ordering_open_hour?: number | null;
+  ordering_close_hour?: number | null;
+};
+
 export function createAdminCatalogApi(client: ApiClient) {
   return {
-    getStores: (query?: QueryParams) => client.get<AdminStoresResponse>("/admin/catalog/stores", { query }),
-    createStore: <T = ApiRecord, TPayload = ApiRecord>(payload: TPayload) =>
-      client.post<ApiEntityResponse<T>, TPayload>("/admin/catalog/stores", payload),
-    updateStore: <T = ApiRecord, TPayload = ApiRecord>(id: string | number, payload: TPayload) =>
-      client.put<ApiEntityResponse<T>, TPayload>(`/admin/catalog/stores/${id}`, payload),
-    deleteStore: <T = ApiRecord>(id: string | number) => client.delete<ApiEntityResponse<T>>(`/admin/catalog/stores/${id}`),
-    upsertCoverage: <T = ApiRecord, TPayload = ApiRecord>(payload: TPayload) =>
-      client.post<ApiEntityResponse<T>, TPayload>("/admin/catalog/coverage", payload),
-    getProducts: (query?: QueryParams) => client.get<AdminProductsResponse>("/admin/catalog/products", { query }),
+    getStores: () => client.get<AdminStoresResponse>("/admin/catalog/stores"),
+    createStore: (payload: AdminStorePayload) => client.post<AdminStoreResponse, AdminStorePayload>("/admin/catalog/stores", payload),
+    updateStore: (id: ApiId, payload: Partial<AdminStorePayload>) =>
+      client.put<AdminStoreResponse, Partial<AdminStorePayload>>(`/admin/catalog/stores/${id}`, payload),
+    deleteStore: (id: ApiId) => client.delete<AdminStoreResponse>(`/admin/catalog/stores/${id}`),
+    upsertCoverage: (payload: AdminCoveragePayload) =>
+      client.post<AdminCoverageResponse, AdminCoveragePayload>("/admin/catalog/coverage", payload),
+    getProducts: () => client.get<AdminProductsResponse>("/admin/catalog/products"),
     createProduct: (payload: AdminProductCreatePayload) =>
       client.post<AdminProductResponse, AdminProductCreatePayload>("/admin/catalog/products", payload),
-    updateProduct: (id: string | number, payload: AdminProductUpdatePayload) =>
+    updateProduct: (id: ApiId, payload: AdminProductUpdatePayload) =>
       client.put<AdminProductResponse, AdminProductUpdatePayload>(`/admin/catalog/products/${id}`, payload),
-    deleteProduct: (id: string | number) =>
+    deleteProduct: (id: ApiId) =>
       client.delete<AdminProductResponse>(`/admin/catalog/products/${id}`),
-    getStoreInventory: (storeId: string | number, query?: QueryParams) =>
-      client.get<AdminStoreInventoryResponse>(`/admin/catalog/stores/${storeId}/inventory`, { query }),
+    getStoreInventory: (storeId: ApiId) =>
+      client.get<AdminStoreInventoryResponse>(`/admin/catalog/stores/${storeId}/inventory`),
     upsertStoreInventory: (
-      storeId: string | number,
-      productId: string | number,
+      storeId: ApiId,
+      productId: ApiId,
       payload: AdminStoreInventoryPayload,
     ) =>
       client.put<AdminStoreInventoryResponseItem, AdminStoreInventoryPayload>(
         `/admin/catalog/stores/${storeId}/inventory/${productId}`,
         payload,
       ),
-    receiveStoreInventory: <T = ApiRecord>(
-      storeId: string | number,
-      productId: string | number,
-      payload: { quantity: string | number },
-    ) =>
-      client.post<ApiEntityResponse<T>, { quantity: string | number }>(
+    receiveStoreInventory: (storeId: ApiId, productId: ApiId, payload: AdminInventoryIncomingPayload) =>
+      client.post<AdminInventoryResponse, AdminInventoryIncomingPayload>(
         `/admin/catalog/stores/${storeId}/inventory/${productId}/incoming`,
         payload,
       ),
-    getPromoCodes: (query?: QueryParams) =>
-      client.get<AdminPromocodesResponse>("/admin/catalog/promo-codes", { query }),
+    getPromoCodes: () => client.get<AdminPromocodesResponse>("/admin/catalog/promo-codes"),
     createPromoCode: (payload: AdminPromocodeCreatePayload) =>
       client.post<AdminPromocodeResponse, AdminPromocodeCreatePayload>("/admin/catalog/promo-codes", payload),
-    updatePromoCode: (id: string | number, payload: AdminPromocodeUpdatePayload) =>
+    updatePromoCode: (id: ApiId, payload: AdminPromocodeUpdatePayload) =>
       client.put<AdminPromocodeResponse, AdminPromocodeUpdatePayload>(`/admin/catalog/promo-codes/${id}`, payload),
-    deletePromoCode: (id: string | number) =>
+    deletePromoCode: (id: ApiId) =>
       client.delete<AdminPromocodeResponse>(`/admin/catalog/promo-codes/${id}`),
-    getDeliverySettings: <T = ApiRecord>(storeId: string | number) =>
-      client.get<ApiEntityResponse<T>>(`/admin/catalog/delivery-settings/${storeId}`),
-    upsertDeliverySettings: <T = ApiRecord, TPayload = ApiRecord>(storeId: string | number, payload: TPayload) =>
-      client.put<ApiEntityResponse<T>, TPayload>(`/admin/catalog/delivery-settings/${storeId}`, payload),
+    getDeliverySettings: (storeId: ApiId) =>
+      client.get<AdminDeliverySettingsResponse>(`/admin/catalog/delivery-settings/${storeId}`),
+    upsertDeliverySettings: (storeId: ApiId, payload: AdminDeliverySettingsPayload) =>
+      client.put<AdminDeliverySettingsResponse, AdminDeliverySettingsPayload>(`/admin/catalog/delivery-settings/${storeId}`, payload),
   };
 }

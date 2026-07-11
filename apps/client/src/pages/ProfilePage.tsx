@@ -14,7 +14,7 @@ import {
   Spinner,
   TextField,
 } from "@koz/ui";
-import { useApi, useAuth, useToast } from "@koz/api";
+import { useApi, useAuth, useToast, type CustomerAddress } from "@koz/api";
 import { usePaywall } from "../paywall/paywall-context";
 
 type SubscriptionStatus = "active" | "paused" | "cancelled" | "expired";
@@ -33,24 +33,6 @@ type CustomerProfile = {
   subscription_start_date: string | null;
   subscription_end_date: string | null;
   subscription_auto_renew: boolean;
-};
-
-type ProfileResponse = {
-  profile: CustomerProfile;
-};
-
-type CustomerAddress = {
-  id: string;
-  coverage_address: string;
-  entrance: number | null;
-  floor: number | null;
-  apartment: number | null;
-  entrance_code: string | null;
-  is_default: boolean;
-};
-
-type AddressesResponse = {
-  addresses: CustomerAddress[];
 };
 
 const SUBSCRIPTION_LABELS: Record<SubscriptionStatus, string> = {
@@ -102,8 +84,8 @@ export function ProfilePage() {
     let active = true;
 
     Promise.all([
-      modules.profileApi.get<ProfileResponse>(),
-      modules.addressesApi.list<AddressesResponse>(),
+      modules.profileApi.get(),
+      modules.addressesApi.list(),
     ])
       .then(([profileResponse, addressesResponse]) => {
         if (!active) return;
@@ -145,7 +127,7 @@ export function ProfilePage() {
 
     setIsSaving(true);
     try {
-      const response = await modules.profileApi.update<ProfileResponse>({
+      const response = await modules.profileApi.update({
         name: name.trim(),
         email: email.trim(),
       });
@@ -166,7 +148,7 @@ export function ProfilePage() {
     setIsDeleting(true);
     try {
       await modules.addressesApi.remove(addressToDelete.id);
-      const response = await modules.addressesApi.list<AddressesResponse>();
+      const response = await modules.addressesApi.list();
       setAddresses(response.addresses ?? []);
       setAddressToDelete(null);
       showToast({ message: "Адрес удалён", tone: "success" });
@@ -183,7 +165,7 @@ export function ProfilePage() {
     setIsCancellingSubscription(true);
     try {
       await modules.subscriptionsApi.cancel(profile.customer.id, { immediate: false });
-      const response = await modules.profileApi.get<ProfileResponse>();
+      const response = await modules.profileApi.get();
       setProfile(response.profile);
       setShowCancelSubscription(false);
       showToast({

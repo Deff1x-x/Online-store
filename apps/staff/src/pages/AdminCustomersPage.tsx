@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Body, Button, Card, Dropdown, EmptyState, H1, Loader, Modal, Pagination, Spinner, Table, TextField } from "@koz/ui";
-import { formatDate, formatMoney, formatPhone, useApi, useToast, type AdminCustomer, type AdminCustomerDetails } from "@koz/api";
+import { formatDate, formatMoney, formatPhone, useApi, useToast, type AdminCustomer, type AdminCustomerDetails, type SubscriptionStatus } from "@koz/api";
 
 const statusOptions = [
   { value: "", label: "Все статусы" },
@@ -23,8 +23,8 @@ export default function AdminCustomersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [storeId, setStoreId] = useState("");
-  const [subscriptionStatus, setSubscriptionStatus] = useState("");
-  const [appliedFilters, setAppliedFilters] = useState({ search: "", storeId: "", subscriptionStatus: "" });
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | "">("");
+  const [appliedFilters, setAppliedFilters] = useState<{ search: string; storeId: string; subscriptionStatus: SubscriptionStatus | "" }>({ search: "", storeId: "", subscriptionStatus: "" });
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [details, setDetails] = useState<AdminCustomerDetails | null>(null);
@@ -126,7 +126,7 @@ export default function AdminCustomersPage() {
         <div className="admin-store-form">
           <TextField label="Поиск по имени или телефону" value={search} onChange={(event) => setSearch(event.target.value)} />
           <TextField label="ID точки" value={storeId} onChange={(event) => setStoreId(event.target.value)} />
-          <Dropdown label="Статус подписки" value={subscriptionStatus} options={statusOptions} onChange={(event) => setSubscriptionStatus(event.target.value)} />
+          <Dropdown label="Статус подписки" value={subscriptionStatus} options={statusOptions} onChange={(event) => setSubscriptionStatus(event.target.value as SubscriptionStatus | "")} />
           <Button type="button" onClick={applyFilters}>Применить фильтры</Button>
         </div>
       </Card>

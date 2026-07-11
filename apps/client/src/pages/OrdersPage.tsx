@@ -10,50 +10,12 @@ import {
   Loader,
   PageContainer,
 } from "@koz/ui";
-import { useApi, useAuth } from "@koz/api";
+import { useApi, useAuth, type CustomerOrder, type DeliveryStatus, type OrderItem, type OrderPaymentStatus } from "@koz/api";
 import { formatCurrency, formatQuantity } from "../utils/format";
 
-type DeliveryStatus =
-  | "new"
-  | "picked"
-  | "in_delivery"
-  | "delivered"
-  | "cancelled"
-  | "failed";
-
-type PaymentStatus = "pending" | "online_paid" | "fully_paid" | "cancelled";
-
-type OrderSummary = {
-  id: string;
-  order_number: string;
-  final_total: string | number;
-  delivery_status: DeliveryStatus;
-  payment_status: PaymentStatus;
-  created_at: string;
-};
-
-type OrderItem = {
-  product_id: string;
-  name: string;
-  quantity: string | number;
-  price_per_unit: string | number;
-  line_total: string | number;
-};
-
-type OrderDetails = OrderSummary & {
-  items: OrderItem[];
-  delivery_fee: string | number;
-  online_payment_amount: string | number;
-  pos_terminal_topup: string | number;
-};
-
-type OrdersResponse = {
-  orders: OrderSummary[];
-};
-
-type OrderDetailsResponse = {
-  order: OrderDetails;
-};
+type PaymentStatus = OrderPaymentStatus;
+type OrderSummary = Pick<CustomerOrder, "id" | "order_number" | "final_total" | "delivery_status" | "payment_status" | "created_at">;
+type OrderDetails = CustomerOrder & { items: OrderItem[] };
 
 const STATUS_FLOW: Array<{ status: DeliveryStatus; label: string }> = [
   { status: "new", label: "Оформлен" },
@@ -108,7 +70,7 @@ export function OrdersPage() {
     let active = true;
 
     modules.ordersApi
-      .listMy<OrdersResponse>()
+      .listMy()
       .then((response) => {
         if (active) setOrders(response.orders ?? []);
       })
@@ -139,7 +101,7 @@ export function OrdersPage() {
 
     setLoadingDetailsId(orderId);
     try {
-      const response = await modules.ordersApi.getMy<OrderDetailsResponse>(orderId);
+      const response = await modules.ordersApi.getMy(orderId);
       setDetailsById((current) => ({ ...current, [orderId]: response.order }));
     } catch {
       setExpandedId(null);
