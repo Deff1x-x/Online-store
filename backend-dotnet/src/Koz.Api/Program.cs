@@ -4,10 +4,12 @@ using Koz.Api.Middleware;
 using Koz.Application.Auth;
 using Koz.Application.Read;
 using Koz.Application.Commerce;
+using Koz.Application.Orders;
 using Koz.Infrastructure.Auth;
 using Koz.Infrastructure.Postgres;
 using Koz.Infrastructure.Read;
 using Koz.Infrastructure.Commerce;
+using Koz.Infrastructure.Orders;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -34,6 +36,8 @@ builder.Services.AddSingleton<IPublicReadRepository, PostgresPublicReadRepositor
 builder.Services.AddSingleton<PublicReadService>();
 builder.Services.AddSingleton<ICommerceRepository, PostgresCommerceRepository>();
 builder.Services.AddSingleton<CommerceService>();
+builder.Services.AddSingleton<IOrderRepository, PostgresOrderRepository>();
+builder.Services.AddSingleton<OrderService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 

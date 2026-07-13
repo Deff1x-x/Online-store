@@ -160,3 +160,11 @@ Implementation: `admin-operations.controller.js` → `admin-operations.service.j
 2. `POST /api/subscriptions/:customerId/cancel` authenticates a JWT but has no `authorizeRoles` middleware, despite the typed consumer modelling a customer action. Preserve this behaviour until an approved contract change.
 3. Admin catalog controller delegates its HTTP status to service `{status,body}`; the consumer types do not encode each status. Capture success/error status per endpoint before NET-8 instead of guessing.
 4. Unmounted files are intentionally excluded: `catalog.routes.js`, `customers.routes.js`, `operations.routes.js`, `order.routes.js`, `operator.routes.js`, `product.routes.js`, `store.routes.js` and legacy middleware variants are not contracts because `src/app.js` does not mount them.
+
+## NET-3A: mounted order creation
+
+| Method, URL | Auth | Request | Exact response / side effects | Implementation | Status |
+|---|---|---|---|---|---|
+| POST `/api/orders` | JWT `customer` only | `{payment_method:"online",delivery_address_id:UUID,items:[{product_id:UUID,quantity:number}],promo_code?:string}` | **201** `{order_id,order_number,breakdown,payment_options,order}`. `breakdown` and payment amounts are JSON numbers; persisted `order` and `order.items` numeric columns are JSON strings, as returned by Node `pg`. Reserves `store_inventory`, inserts `orders`, `order_items`, status history, and only the winning first-order *or* promo discount. It does **not** insert `payments`. | `orders.routes.js` → `orders.controller.js` → `orders.service.js` → `orders.repository.js`; .NET `OrdersController` → `OrderService` → `PostgresOrderRepository` | NET-3A |
+
+The calculation order is Node-defined: per-line effective store price, rounded subtotal, choose the larger of first-order and promo discounts (first-order wins ties), delivery fee from pre-discount subtotal, final total, then 80% preauth and POS remainder. The fulfillment time is the Node fixed UTC+5/Almaty flow: `same_day` inside `[open,close)`, otherwise `next_morning` with `morning_from_11:00`.

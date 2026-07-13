@@ -101,3 +101,27 @@ For NET-2B, create only the isolated `koz_dotnet_net2b_test` database from the s
 $env:KOZ_NET2B_TEST_CONNECTION_STRING = 'Host=localhost;Port=5432;Database=koz_dotnet_net2b_test;Username=postgres;Password=<password>'
 dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.csproj --filter FullyQualifiedName~Net2bCommerceIntegrationTests
 ```
+
+## NET-3A order-create smoke check
+
+`POST /api/orders` is mounted only for a customer JWT. The customer must have an active subscription and an address belonging to that customer in the store coverage.
+
+```powershell
+$headers = @{ Authorization = 'Bearer <customer JWT>' }
+$order = @{
+  payment_method = 'online'
+  delivery_address_id = '<customer address UUID>'
+  items = @(
+    @{ product_id = '33333333-3333-3333-3333-333333333333'; quantity = 1.5 }
+    @{ product_id = '55555555-5555-5555-5555-555555555555'; quantity = 2 }
+  )
+} | ConvertTo-Json -Depth 4
+Invoke-RestMethod http://localhost:5000/api/orders -Method Post -Headers $headers -ContentType 'application/json' -Body $order
+```
+
+For Node↔.NET NET-3A integration/contract tests, create only `koz_dotnet_net3a_test` from `database/schema.sql`, migrations `001`/`002`, and `database/seed.sql`. The test suite refuses every other database name and resets only deterministic test fixture rows:
+
+```powershell
+$env:KOZ_NET3A_TEST_CONNECTION_STRING = 'Host=localhost;Port=5432;Database=koz_dotnet_net3a_test;Username=postgres;Password=<password>'
+dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.csproj --filter FullyQualifiedName~Net3aOrderCreateIntegrationTests
+```
