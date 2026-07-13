@@ -3,9 +3,11 @@ using Koz.Api.Auth;
 using Koz.Api.Middleware;
 using Koz.Application.Auth;
 using Koz.Application.Read;
+using Koz.Application.Commerce;
 using Koz.Infrastructure.Auth;
 using Koz.Infrastructure.Postgres;
 using Koz.Infrastructure.Read;
+using Koz.Infrastructure.Commerce;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -30,6 +32,8 @@ builder.Services.AddSingleton<IAuthRuntime, AspNetAuthRuntime>();
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<IPublicReadRepository, PostgresPublicReadRepository>();
 builder.Services.AddSingleton<PublicReadService>();
+builder.Services.AddSingleton<ICommerceRepository, PostgresCommerceRepository>();
+builder.Services.AddSingleton<CommerceService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
@@ -68,7 +72,7 @@ builder.Services
                 }
 
                 var parts = authorization.Split(' ');
-                if (parts.Length != 2 || parts[0] != "Bearer" || string.IsNullOrEmpty(parts[1]))
+                if (parts.Length < 2 || parts[0] != "Bearer" || string.IsNullOrEmpty(parts[1]))
                 {
                     context.HttpContext.Items["auth_error"] = (401, "Authorization header must use Bearer token", "invalid_authorization_header");
                     context.NoResult();

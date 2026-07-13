@@ -49,7 +49,7 @@ Invoke-RestMethod http://localhost:5000/api/health
 
 The local launch profile binds the .NET API to `http://localhost:5000`; Node remains on `http://localhost:3000`. Start Node in one terminal (`npm.cmd start`) and the .NET API in another. Do not point either Vite app at port 5000 in NET-1.
 
-Swagger UI is available only in Development at `http://localhost:5000/swagger`; it is an aid, not the contract source. The OpenAPI surface contains health and the NET-1 Auth endpoints only.
+Swagger UI is available only in Development at `http://localhost:5000/swagger`; it is an aid, not the contract source. The mounted .NET surface currently includes health, NET-1 Auth, NET-2A reads and NET-2B commerce endpoints.
 
 ## Auth smoke checks (NET-1)
 
@@ -94,3 +94,10 @@ Without that variable the integration test is explicitly skipped; API contract t
 For NET-1 Auth tests, create the separate `koz_dotnet_net1_test` database from the same schema, 001/002 migrations and `database/seed.sql`, then set `KOZ_NET1_TEST_CONNECTION_STRING`. The Auth suite refuses every other database name.
 
 For NET-2A tests, create the separate `koz_dotnet_net2a_test` database from the same schema, 001/002 migrations and `database/seed.sql`, then set `KOZ_NET2A_TEST_CONNECTION_STRING`. The NET-2A suite refuses every other database name.
+
+For NET-2B, create only the isolated `koz_dotnet_net2b_test` database from the same schema, migrations and seed. The suite starts Node and .NET against that database and refuses every other name:
+
+```powershell
+$env:KOZ_NET2B_TEST_CONNECTION_STRING = 'Host=localhost;Port=5432;Database=koz_dotnet_net2b_test;Username=postgres;Password=<password>'
+dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.csproj --filter FullyQualifiedName~Net2bCommerceIntegrationTests
+```

@@ -57,16 +57,16 @@
 | GET `/api/my-addresses` | JWT `customer` | — | `AddressesResponse`; entrance/floor/apartment/entrance_code/entrance_count nullable; **200** | `my-addresses.controller/service/repository` | `addresses-api.ts` | **NET-2A implemented; Node↔.NET parity test** |
 | POST `/api/my-addresses` | JWT `customer` | `{store_coverage_id,entrance?,floor?,apartment?,entrance_code?,is_default?}` | `AddressResponse {message,address}`; address nullable fields above; **201** | same | `addresses-api.ts` | NET-4 |
 | DELETE `/api/my-addresses/:id` | JWT `customer` | — | `MessageResponse {message}`; **200** | same | `addresses-api.ts` | NET-4 |
-| GET `/api/subscriptions` | JWT `admin_catalog|admin_operations|admin_customers` | `store_id?`, `status?:SubscriptionStatus` | `SubscriptionsResponse`; `expires_at,next_billing_date,cancelled_at,customer_name,customer_email` nullable; **200** | `subscriptions.controller/service/repository` | `subscriptions-api.ts` | NET-7 |
-| POST `/api/subscriptions` | JWT `customer` | `{billing_period?:BillingPeriod,amount?:number}` | `CreateSubscriptionResponse`; `payment.status="pending_provider_confirmation"`; **201** | same | `subscriptions-api.ts` | NET-5 |
-| POST `/api/subscriptions/:customerId/renew` | JWT `admin_customers` | — | `SubscriptionResponse`; nullable fields as above; **200** | same | `subscriptions-api.ts` | NET-7 |
-| POST `/api/subscriptions/:customerId/cancel` | JWT authenticated (route has **no role middleware**) | `{immediate?:boolean}` | `SubscriptionResponse`; **200** | same | `subscriptions-api.ts` | NET-7 |
+| GET `/api/subscriptions` | JWT `admin_catalog|admin_operations|admin_customers` | `store_id?`, `status?:SubscriptionStatus` | `SubscriptionsResponse`; `expires_at,next_billing_date,cancelled_at,customer_name,customer_email` nullable; **200** | `subscriptions.controller/service/repository` | `subscriptions-api.ts` | **NET-2B implemented; Node↔.NET contract test** |
+| POST `/api/subscriptions` | JWT `customer` | `{billing_period?:BillingPeriod,amount?:number}` | `CreateSubscriptionResponse`; `payment.status="pending_provider_confirmation"`; **201** | same | `subscriptions-api.ts` | **NET-2B implemented; Node↔.NET contract test** |
+| POST `/api/subscriptions/:customerId/renew` | JWT `admin_customers` | — | `SubscriptionResponse`; nullable fields as above; **200** | same | `subscriptions-api.ts` | **NET-2B implemented; Node↔.NET contract test** |
+| POST `/api/subscriptions/:customerId/cancel` | JWT authenticated (route has **no role middleware**) | `{immediate?:boolean}` | `SubscriptionResponse`; **200** | same | `subscriptions-api.ts` | **NET-2B implemented; Node↔.NET contract test** |
 
 ## Promocodes, orders and payments
 
 | Method, URL | Auth / roles | Query, request DTO | Response DTO; nullable / enum; status | Node implementation | Consumer | Priority |
 |---|---|---|---|---|---|---|
-| POST `/api/promocodes/validate` | JWT `customer` | `{promo_code:string,order_total:number}` | `{is_valid:boolean,discount_amount:number,error_message:string|null}`; **200** | `promocodes.controller/service/repository` | `promocodes-api.ts` | NET-5 |
+| POST `/api/promocodes/validate` | JWT `customer` | `{promo_code:string,order_total:number}` | `{is_valid:boolean,discount_amount:number,error_message:string|null}`; **200** | `promocodes.controller/service/repository` | `promocodes-api.ts` | **NET-2B implemented; Node↔.NET contract test** |
 | GET `/api/promocodes` | JWT `admin_catalog` | `store_id?` | `PromoCodesResponse`; `store_id,max_uses,valid_from,valid_until` nullable; discount enum; **200** | same | `promocodes-api.ts` | NET-8 |
 | POST `/api/promocodes` | JWT `admin_catalog` | `CreatePromoCodePayload` | `PromoCodeResponse`; same nullability/enum; **201** | same | `promocodes-api.ts` | NET-8 |
 | POST `/api/orders` | JWT `customer` | `CreateOrderPayload {payment_method:"online",delivery_address_id,items:[{product_id,quantity}],promo_code?}` | `CreateOrderResponse`; order number, address, weights, delivery values nullable as in `CustomerOrder`; delivery/payment enum; **201** | `orders.controller/service/repository`, `first-order-discounts.*`, `delivery-settings.*`, `promo-codes.*` | `orders-api.ts` | NET-5 |

@@ -1,6 +1,7 @@
 using Koz.Api.Configuration;
 using Koz.Application.Auth;
 using Koz.Application.Read;
+using Koz.Application.Commerce;
 
 namespace Koz.Api.Middleware;
 
@@ -32,6 +33,10 @@ public sealed class NodeCompatibleExceptionMiddleware(RequestDelegate next, ILog
             }
 
             logger.LogInformation("Read contract error {Code} while handling {Method} {Path}.", exception.Code, context.Request.Method, context.Request.Path);
+            await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
+        }
+        catch (CommerceContractException exception)
+        {
             await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
         }
         catch (DatabaseConfigurationException exception)
