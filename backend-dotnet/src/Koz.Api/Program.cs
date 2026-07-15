@@ -7,6 +7,7 @@ using Koz.Application.Commerce;
 using Koz.Application.Orders;
 using Koz.Application.AdminCatalog;
 using Koz.Application.AdminCustomers;
+using Koz.Application.AdminOperations;
 using Koz.Infrastructure.Auth;
 using Koz.Infrastructure.Postgres;
 using Koz.Infrastructure.Read;
@@ -14,6 +15,7 @@ using Koz.Infrastructure.Commerce;
 using Koz.Infrastructure.Orders;
 using Koz.Infrastructure.AdminCatalog;
 using Koz.Infrastructure.AdminCustomers;
+using Koz.Infrastructure.AdminOperations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -52,6 +54,8 @@ builder.Services.AddSingleton<IAdminCatalogRepository, PostgresAdminCatalogRepos
 builder.Services.AddSingleton<AdminCatalogService>();
 builder.Services.AddSingleton<IAdminCustomerRepository, PostgresAdminCustomerRepository>();
 builder.Services.AddSingleton<AdminCustomerService>();
+builder.Services.AddSingleton<IAdminOperationsRepository, PostgresAdminOperationsRepository>();
+builder.Services.AddSingleton<AdminOperationsService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 

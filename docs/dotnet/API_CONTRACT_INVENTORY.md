@@ -169,6 +169,23 @@ Implementation: `admin-operations.controller.js` → `admin-operations.service.j
 
 Mounted under `/api/admin/customers`, all eight routes require JWT role `admin_customers`: `GET customers`, `GET customers/:id`, `GET subscriptions`, `PUT subscription/renew`, `PUT subscription/cancel`, `PUT subscription/pause`, `GET audit-logs/consents`, and `POST export/customers`. The module retains Node's query defaults (`page=1`, `limit=20`, max 100), customer `created_at DESC` ordering, recent order limit 10, subscription wrapper and soft cancel (`auto_renew=false` unless `immediate:true`).
 
+## NET-4D: Admin Operations (implemented; parity suite)
+
+All routes below are mounted by `src/app.js` under `/api/admin/operations` and require exactly JWT role `admin_operations`.  They are implemented by `AdminOperationsController` -> `AdminOperationsService` -> `PostgresAdminOperationsRepository`, with parameterized PostgreSQL, Node-compatible `{message,code}` errors, numeric-as-string JSON and UTC millisecond timestamps.
+
+| Method, URL | Response wrapper / side effects | Status |
+|---|---|---|
+| GET `/orders` | `{orders,pagination}`; Node page/limit normalization, store/status/date filters | implemented, parity-tested |
+| GET `/orders/:id` | `{order,items,status_history,payments}` | implemented, parity-tested |
+| PUT `/orders/:id/status` | `{order}`; locked transition, inventory return for failed/cancelled, POS completion/payment and status history for delivered | implemented, parity-tested |
+| GET `/payments` | `{payments,pagination}`; store/method/status/date filters | implemented, parity-tested |
+| GET `/analytics/revenue` | `{revenue}`; delivered-order aggregates | implemented, parity-tested |
+| GET `/analytics/delivery` | `{delivery}`; delivery aggregates | implemented, parity-tested |
+| GET `/stores/:id/report` | `{report}`; store/subscriber/order aggregates, 404 `store_not_found` | implemented, parity-tested |
+| POST `/export/orders` | `{message,format,generated_at,rows}` | implemented, parity-tested |
+| GET `/promo-codes/:id/usage` | `{usage}` | implemented, parity-tested |
+| GET `/first-order-discounts` | `{first_order_discounts}` | implemented, parity-tested |
+
 All routes below are the 18 routes mounted by `src/app.js` through `admin-catalog.routes.js`; every route requires a JWT with exactly the `admin_catalog` role.  The .NET implementation is `AdminCatalogController` -> `AdminCatalogService` -> `PostgresAdminCatalogRepository`.  It preserves Node wrappers, PostgreSQL numeric-as-string serialization, UTC timestamps, sorting, upserts and soft-deletes.
 
 | Method, URL | Request / response wrapper | Node side effect | .NET status |

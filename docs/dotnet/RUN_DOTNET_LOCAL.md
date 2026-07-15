@@ -153,6 +153,24 @@ dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.cspro
 
 ## NET-4C Admin Customers smoke checks
 
+## NET-4D Admin Operations smoke checks
+
+```powershell
+$headers = @{ Authorization = 'Bearer <admin_operations JWT>' }
+$orderId = '<order UUID>'
+Invoke-RestMethod 'http://localhost:5000/api/admin/operations/orders?page=1&limit=20' -Headers $headers
+Invoke-RestMethod "http://localhost:5000/api/admin/operations/orders/$orderId" -Headers $headers
+Invoke-RestMethod "http://localhost:5000/api/admin/operations/orders/$orderId/status" -Method Put -Headers $headers -ContentType 'application/json' -Body (@{ delivery_status = 'picked' } | ConvertTo-Json)
+Invoke-RestMethod 'http://localhost:5000/api/admin/operations/analytics/revenue' -Headers $headers
+```
+
+The Node↔.NET NET-4D suite rejects every database except `koz_dotnet_net4d_test`:
+
+```powershell
+$env:KOZ_NET4D_TEST_CONNECTION_STRING = 'Host=localhost;Port=5432;Database=koz_dotnet_net4d_test;Username=postgres;Password=<password>'
+dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.csproj --filter FullyQualifiedName~Net4dAdminOperationsIntegrationTests
+```
+
 ```powershell
 $headers = @{ Authorization = 'Bearer <admin_customers JWT>' }
 Invoke-RestMethod 'http://localhost:5000/api/admin/customers/customers?page=1&limit=20&search=Ali' -Headers $headers
