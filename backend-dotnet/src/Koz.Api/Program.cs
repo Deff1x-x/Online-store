@@ -42,6 +42,8 @@ builder.Services.AddSingleton<IManagerOrderRepository, PostgresOrderRepository>(
 builder.Services.AddSingleton<ManagerOrderService>();
 builder.Services.AddSingleton<ICustomerOrderRepository, PostgresOrderRepository>();
 builder.Services.AddSingleton<CustomerOrderService>();
+builder.Services.AddSingleton<IManagerInventoryRepository, PostgresOrderRepository>();
+builder.Services.AddSingleton<ManagerInventoryService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 

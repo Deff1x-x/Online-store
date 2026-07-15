@@ -84,10 +84,10 @@
 | PUT `/api/my-store/orders/:id/pick` | JWT `store_operator` | — | `{order:ManagerOrder}`; same nullability/enum; **200** | same | `manager-api.ts` | NET-6 |
 | PUT `/api/my-store/orders/:id/actual-weight` | JWT `store_operator` | `{actual_weight:number}` | `{order:ManagerOrder}`; **200** | same | `manager-api.ts` | NET-6 |
 | PUT `/api/my-store/orders/:id/status` | JWT `store_operator` | `{delivery_status:DeliveryStatus}` | `{order:ManagerOrder}`; **200** | same | `manager-api.ts` | NET-6 |
-| GET `/api/my-store/inventory` | JWT `store_operator` | — | `ManagerInventoryResponse`; `selling_price,last_delivery_date` nullable; inventory enum; **200** | same | `manager-api.ts` | NET-6 |
-| PUT `/api/my-store/inventory/:product_id` | JWT `store_operator` | `{is_visible?:boolean,selling_price?:number|null,quantity?:number}` | `{inventory:ManagerInventoryItem}`; nullable fields above; **200** | same | `manager-api.ts` | NET-6 |
-| POST `/api/my-store/inventory/:product_id/incoming` | JWT `store_operator` | `{quantity:number}` | `{inventory:ManagerInventoryItem}`; **200** | same | `manager-api.ts` | NET-6 |
-| GET `/api/my-store/analytics` | JWT `store_operator` | `date_from?`, `date_to?` | `ManagerAnalyticsResponse`; funnel keys are `DeliveryStatus`; **200** | same | `manager-api.ts` | NET-6 |
+| GET `/api/my-store/inventory` | JWT `store_operator` | — | `ManagerInventoryResponse`; `selling_price,last_delivery_date` nullable; inventory enum; **200** | same | `manager-api.ts` | NET-4A implemented |
+| PUT `/api/my-store/inventory/:product_id` | JWT `store_operator` | `{is_visible?:boolean,selling_price?:number|null,quantity?:number}` | `{inventory:ManagerInventoryItem}`; nullable fields above; **200** | same | `manager-api.ts` | NET-4A implemented |
+| POST `/api/my-store/inventory/:product_id/incoming` | JWT `store_operator` | `{quantity:number}` | `{inventory:ManagerInventoryItem}`; **200** | same | `manager-api.ts` | NET-4A implemented |
+| GET `/api/my-store/analytics` | JWT `store_operator` | `date_from?`, `date_to?` | `ManagerAnalyticsResponse`; funnel keys are `DeliveryStatus`; **200** | same | `manager-api.ts` | NET-4A implemented |
 | POST `/api/notifications/sms` | JWT `admin_operations` | `{recipient,template_key?,payload?}` | `NotificationResponse`; `template_key,last_error,sent_at` nullable; channel/status enum; **202** | `notifications.controller/service/repository` | `notifications-api.ts` | NET-9 |
 | POST `/api/notifications/email` | JWT `admin_operations` | same | `NotificationResponse`; same nullable/enum; **202** | same | `notifications-api.ts` | NET-9 |
 

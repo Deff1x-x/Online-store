@@ -127,6 +127,12 @@ public sealed record CustomerOrderItemDetailDto(
     [property: JsonPropertyName("price_per_unit")] string PricePerUnit,
     [property: JsonPropertyName("line_total")] string LineTotal,
     [property: JsonPropertyName("estimated_weight")] string? EstimatedWeight);
+public sealed record ManagerInventoryResponse(IReadOnlyList<ManagerInventoryDto> Inventory);
+public sealed record ManagerInventoryItemResponse(ManagerInventoryDto Inventory);
+public sealed record ManagerInventoryUpdateRequest([property: JsonPropertyName("is_visible")] JsonElement IsVisible,[property: JsonPropertyName("selling_price")] JsonElement SellingPrice,JsonElement Quantity);
+public sealed record ManagerInventoryDto(string Id,[property: JsonPropertyName("store_id")] string StoreId,[property: JsonPropertyName("product_id")] string ProductId,string Name,string Category,string Unit,[property: JsonPropertyName("is_weighted")] bool IsWeighted,[property: JsonPropertyName("price_per_unit")] string PricePerUnit,[property: JsonPropertyName("selling_price")] string? SellingPrice,[property: JsonPropertyName("effective_price")] string EffectivePrice,string Quantity,[property: JsonPropertyName("stock_quantity")] int StockQuantity,[property: JsonPropertyName("is_visible")] bool IsVisible,string Status,[property: JsonPropertyName("last_delivery_date")] string? LastDeliveryDate);
+public sealed record ManagerAnalyticsResponse(ManagerAnalyticsDto Analytics);
+public sealed record ManagerAnalyticsDto(IReadOnlyDictionary<string,int> Funnel,[property: JsonPropertyName("gmv_delivered")] string GmvDelivered,[property: JsonPropertyName("pos_collected")] string PosCollected,[property: JsonPropertyName("avg_order_value")] string AvgOrderValue,[property: JsonPropertyName("stopped_items")] int StoppedItems,[property: JsonPropertyName("out_of_stock")] int OutOfStock,[property: JsonPropertyName("low_stock")] int LowStock);
 
 public sealed record ManagerOrderStatusRequest([property: JsonPropertyName("delivery_status")] string? DeliveryStatus);
 public sealed record ManagerActualWeightRequest([property: JsonPropertyName("actual_weight")] JsonElement ActualWeight);

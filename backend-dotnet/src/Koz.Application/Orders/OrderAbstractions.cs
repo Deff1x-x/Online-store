@@ -16,3 +16,4 @@ public interface ICustomerOrderRepository
     Task<IReadOnlyList<CustomerOrderListDto>> ListAsync(string userId, CancellationToken cancellationToken);
     Task<CustomerOrderDetailDto?> DetailAsync(string userId, string orderId, CancellationToken cancellationToken);
 }
+public interface IManagerInventoryRepository { Task<IReadOnlyList<ManagerInventoryDto>> InventoryAsync(string storeId,CancellationToken ct); Task<ManagerInventoryDto> UpdateInventoryAsync(string storeId,string productId,ManagerInventoryUpdateRequest request,CancellationToken ct); Task<ManagerInventoryDto> ReceiveAsync(string storeId,string productId,decimal quantity,CancellationToken ct); Task<ManagerAnalyticsDto> AnalyticsAsync(string storeId,string from,string to,CancellationToken ct); }
