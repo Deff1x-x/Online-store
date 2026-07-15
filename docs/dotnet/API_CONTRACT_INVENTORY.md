@@ -70,8 +70,8 @@
 | GET `/api/promocodes` | JWT `admin_catalog` | `store_id?` | `PromoCodesResponse`; `store_id,max_uses,valid_from,valid_until` nullable; discount enum; **200** | same | `promocodes-api.ts` | NET-8 |
 | POST `/api/promocodes` | JWT `admin_catalog` | `CreatePromoCodePayload` | `PromoCodeResponse`; same nullability/enum; **201** | same | `promocodes-api.ts` | NET-8 |
 | POST `/api/orders` | JWT `customer` | `CreateOrderPayload {payment_method:"online",delivery_address_id,items:[{product_id,quantity}],promo_code?}` | `CreateOrderResponse`; order number, address, weights, delivery values nullable as in `CustomerOrder`; delivery/payment enum; **201** | `orders.controller/service/repository`, `first-order-discounts.*`, `delivery-settings.*`, `promo-codes.*` | `orders-api.ts` | NET-5 |
-| GET `/api/my-orders` | JWT `customer` | — | `MyOrdersResponse {orders:CustomerOrder[]}`; nullable fields above; **200** | `orders.controller/service/repository` | `orders-api.ts` | NET-6 |
-| GET `/api/my-orders/:id` | JWT `customer` | — | `MyOrderResponse {order:CustomerOrder & {items}}`; item `estimated_weight` nullable; **200** | same | `orders-api.ts` | NET-6 |
+| GET `/api/my-orders` | JWT `customer` | — | `{orders:[{id,order_number,subtotal,discount_total,delivery_fee,online_payment_amount,online_capture_amount,pos_terminal_topup,final_total,status,delivery_status,payment_status,fulfillment_window,delivery_date,created_at}]}`; **200**, `created_at DESC` | `orders.controller/service/repository` | `orders-api.ts` | **NET-3C implemented** |
+| GET `/api/my-orders/:id` | JWT `customer` | path UUID | `{order: orders.* + items:[{product_id,name,quantity,price_per_unit,line_total,estimated_weight}]}`; **200**, items `name ASC`; missing/foreign **404** `order_not_found` | same | `orders-api.ts` | **NET-3C implemented** |
 | GET `/api/payments` | JWT `admin_operations` | `method?:PaymentMethod,status?:PaymentRecordStatus` | `PaymentsResponse`; `order_number:null`, `provider_payload:JSON`; **200** | `payments.controller/service/repository` | `payments-api.ts` | NET-7 |
 | GET `/api/payments/:id` | JWT `admin_operations` | — | `PaymentResponse`; same nullability/enum; **200** | same | `payments-api.ts` | NET-7 |
 | POST `/api/payments/orders/:orderId/pay-online` | JWT `customer` | — | `OnlinePaymentResponse`; `PaymentResponse + payment_url + qr`; **service-selected 200/201** | same | `payments-api.ts` | NET-5 |
@@ -168,3 +168,14 @@ Implementation: `admin-operations.controller.js` → `admin-operations.service.j
 | POST `/api/orders` | JWT `customer` only | `{payment_method:"online",delivery_address_id:UUID,items:[{product_id:UUID,quantity:number}],promo_code?:string}` | **201** `{order_id,order_number,breakdown,payment_options,order}`. `breakdown` and payment amounts are JSON numbers; persisted `order` and `order.items` numeric columns are JSON strings, as returned by Node `pg`. Reserves `store_inventory`, inserts `orders`, `order_items`, status history, and only the winning first-order *or* promo discount. It does **not** insert `payments`. | `orders.routes.js` → `orders.controller.js` → `orders.service.js` → `orders.repository.js`; .NET `OrdersController` → `OrderService` → `PostgresOrderRepository` | NET-3A |
 
 The calculation order is Node-defined: per-line effective store price, rounded subtotal, choose the larger of first-order and promo discounts (first-order wins ties), delivery fee from pre-discount subtotal, final total, then 80% preauth and POS remainder. The fulfillment time is the Node fixed UTC+5/Almaty flow: `same_day` inside `[open,close)`, otherwise `next_morning` with `morning_from_11:00`.
+
+## NET-3B: mounted manager order processing
+
+| Method, URL | Auth | Request | Exact Node side effects | .NET status |
+|---|---|---|---|---|
+| GET `/api/my-store/orders` | JWT `store_operator`; JWT `store_id` scope | `status?` from the six `delivery_status` values | `{orders}`; each list record has JSONB-canonical `delivery_address` and ordered `items` (`p.name`), including Node numeric JSON types | implemented |
+| PUT `/api/my-store/orders/:id/pick` | same | no body | locked `new → picked`, `order_status_history` insert | implemented |
+| PUT `/api/my-store/orders/:id/actual-weight` | same | `{actual_weight}` | locked `picked` order; Node's order-level recalculation only: `subtotal * actual/estimated`, discount, delivery, capture and POS fields; no payment row | implemented |
+| PUT `/api/my-store/orders/:id/status` | same | `{delivery_status}` | Node transition graph: `new→picked/failed/cancelled`, `picked→in_delivery/failed/cancelled`, `in_delivery→delivered/failed`; failure/cancellation returns item inventory; delivery writes a POS `payments` row only when top-up is positive | implemented |
+
+All four NET-3B routes retain the Node `{ message, code }` error shape. The repository scopes every locked order by the JWT store, uses one transaction for each mutation, and does not accept a store id or financial totals from the client.

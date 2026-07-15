@@ -7,6 +7,7 @@ public static class AuthPolicies
 {
     public const string Customer = "customer";
     public const string StoreOperator = "store_operator";
+    public const string StoreOperatorRole = "store_operator_role";
     public const string AdminCatalog = "admin_catalog";
     public const string AdminOperations = "admin_operations";
     public const string AdminCustomers = "admin_customers";
@@ -22,6 +23,7 @@ public static class AuthPolicies
         options.AddPolicy(StoreOperator, policy => policy.RequireAssertion(context =>
             context.User.HasClaim("role", UserRoles.StoreOperator) &&
             context.User.HasClaim(claim => claim.Type == "store_id" && !string.IsNullOrWhiteSpace(claim.Value))));
+        AddRole(options, StoreOperatorRole, UserRoles.StoreOperator);
     }
 
     private static void AddRole(AuthorizationOptions options, string name, string role) =>

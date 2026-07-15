@@ -5,7 +5,7 @@ using Npgsql;
 
 namespace Koz.Infrastructure.Orders;
 
-public sealed class PostgresOrderRepository(NpgsqlDataSource dataSource, TimeProvider timeProvider) : IOrderRepository
+public sealed class PostgresOrderRepository(NpgsqlDataSource dataSource, TimeProvider timeProvider) : IOrderRepository, IManagerOrderRepository, ICustomerOrderRepository
 {
     private const string PaymentNote = "hold 80%; capture by actual weight at delivery, remainder via courier POS";
 
@@ -251,7 +251,7 @@ public sealed class PostgresOrderRepository(NpgsqlDataSource dataSource, TimePro
         _ => throw new OrderContractException(400, "Invalid order item quantity", "invalid_order_item_quantity"),
     };
 
-    private static NpgsqlCommand Command(NpgsqlConnection connection, NpgsqlTransaction transaction, string sql, params object?[] values)
+    private static NpgsqlCommand Command(NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql, params object?[] values)
     {
         var command = new NpgsqlCommand(sql, connection, transaction);
         for (var index = 0; index < values.Length; index++) command.Parameters.AddWithValue(values[index] ?? DBNull.Value);
@@ -271,6 +271,38 @@ public sealed class PostgresOrderRepository(NpgsqlDataSource dataSource, TimePro
     private static string Timestamp(DateTimeOffset value) => value.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
     private static string DateOnlyTimestamp(DateOnly value) => Timestamp(new DateTimeOffset(value.ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(5)));
 
+    public async Task<IReadOnlyList<CustomerOrderListDto>> ListAsync(string userId, CancellationToken ct)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        await using var customerCommand = Command(connection, null, "SELECT id FROM customers WHERE user_id=$1", Guid.Parse(userId));
+        var customerId = await customerCommand.ExecuteScalarAsync(ct);
+        if (customerId is not Guid customer) return [];
+        const string sql = "SELECT id,order_number,subtotal,discount_total,delivery_fee,online_payment_amount,online_capture_amount,pos_terminal_topup,final_total,delivery_status AS status,delivery_status,payment_status,fulfillment_window,delivery_date,created_at FROM orders WHERE customer_id=$1 ORDER BY created_at DESC";
+        await using var command = Command(connection, null, sql, customer);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        var orders = new List<CustomerOrderListDto>();
+        while (await reader.ReadAsync(ct)) orders.Add(new(reader.GetGuid(0).ToString(), reader.IsDBNull(1) ? null : reader.GetString(1), Numeric(reader.GetDecimal(2), "0.00"), Numeric(reader.GetDecimal(3), "0.00"), Numeric(reader.GetDecimal(4), "0.00"), Numeric(reader.GetDecimal(5), "0.00"), Numeric(reader.GetDecimal(6), "0.00"), Numeric(reader.GetDecimal(7), "0.00"), Numeric(reader.GetDecimal(8), "0.00"), reader.GetString(9), reader.GetString(10), reader.GetString(11), reader.GetString(12), reader.IsDBNull(13) ? null : DateOnlyTimestamp(reader.GetFieldValue<DateOnly>(13)), Timestamp(reader.GetFieldValue<DateTimeOffset>(14))));
+        return orders;
+    }
+
+    public async Task<CustomerOrderDetailDto?> DetailAsync(string userId, string orderId, CancellationToken ct)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        await using var customerCommand = Command(connection, null, "SELECT id FROM customers WHERE user_id=$1", Guid.Parse(userId));
+        var customerId = await customerCommand.ExecuteScalarAsync(ct);
+        if (customerId is not Guid customer) return null;
+        await using var command = Command(connection, null, "SELECT * FROM orders WHERE id=$1 AND customer_id=$2", Guid.Parse(orderId), customer);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) return null;
+        var order = ReadOrder(reader);
+        await reader.CloseAsync();
+        var items = new List<CustomerOrderItemDetailDto>();
+        await using var itemCommand = Command(connection, null, "SELECT oi.product_id,p.name,oi.quantity,oi.price_per_unit,oi.line_total,oi.estimated_weight FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=$1 ORDER BY p.name ASC", order.Id);
+        await using var itemReader = await itemCommand.ExecuteReaderAsync(ct);
+        while (await itemReader.ReadAsync(ct)) items.Add(new(itemReader.GetGuid(0).ToString(), itemReader.GetString(1), Numeric(itemReader.GetDecimal(2), "0.000"), Numeric(itemReader.GetDecimal(3), "0.00"), Numeric(itemReader.GetDecimal(4), "0.00"), itemReader.IsDBNull(5) ? null : Numeric(itemReader.GetDecimal(5), "0.000")));
+        return new(order.Id.ToString(), order.OrderNumber, order.StoreId.ToString(), order.CustomerId.ToString(), order.DeliveryAddressId?.ToString(), Numeric(order.Subtotal, "0.00"), Numeric(order.DiscountTotal, "0.00"), Numeric(order.DeliveryFee, "0.00"), order.EstimatedWeight is { } estimated ? Numeric(estimated, "0.000") : null, order.ActualWeight is { } actual ? Numeric(actual, "0.000") : null, Numeric(order.OnlinePaymentAmount, "0.00"), Numeric(order.OnlineCaptureAmount, "0.00"), Numeric(order.PosTerminalTopup, "0.00"), Numeric(order.FinalTotal, "0.00"), Numeric(order.TotalPrice, "0.00"), order.FulfillmentWindow, order.DeliveryDate is { } date ? DateOnlyTimestamp(date) : null, order.DeliveryTimeSlot, order.DeliveryStatus, order.PaymentStatus, order.DeliveredAt is { } delivered ? Timestamp(delivered) : null, Timestamp(order.CreatedAt), Timestamp(order.UpdatedAt), items);
+    }
+
     private sealed record CustomerRow(Guid Id, Guid StoreId, string SubscriptionStatus, DateOnly? SubscriptionEndDate);
     private sealed record ProductRow(Guid ProductId, bool IsWeighted, bool IsActive, Guid InventoryId, bool IsVisible, decimal EffectivePrice);
     private sealed record FirstDiscountRow(Guid Id, decimal Amount, bool IsUsed);
@@ -281,4 +313,42 @@ public sealed class PostgresOrderRepository(NpgsqlDataSource dataSource, TimePro
     private sealed record Fulfillment(string Window, DateOnly Date, string? TimeSlot);
     private sealed record NewOrder(string OrderNumber, Guid StoreId, Guid CustomerId, Guid DeliveryAddressId, decimal Subtotal, decimal DiscountTotal, decimal DeliveryFee, decimal EstimatedWeight, decimal Preauth, decimal Remainder, decimal FinalTotal, string FulfillmentWindow, DateOnly DeliveryDate, string? DeliveryTimeSlot);
     private sealed record OrderRow(Guid Id, string? OrderNumber, Guid StoreId, Guid CustomerId, Guid? DeliveryAddressId, decimal Subtotal, decimal DiscountTotal, decimal DeliveryFee, decimal? EstimatedWeight, decimal? ActualWeight, decimal OnlinePaymentAmount, decimal OnlineCaptureAmount, decimal PosTerminalTopup, decimal FinalTotal, decimal TotalPrice, string FulfillmentWindow, DateOnly? DeliveryDate, string? DeliveryTimeSlot, string DeliveryStatus, string PaymentStatus, DateTimeOffset? DeliveredAt, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+
+    public async Task<IReadOnlyList<ManagerOrderDto>> ListAsync(string storeId, string? status, CancellationToken ct)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        const string select="SELECT o.*,ca.id,sc.address,ca.entrance,ca.floor,ca.apartment,ca.entrance_code,oi.product_id,p.name,oi.quantity,oi.price_per_unit,oi.line_total,oi.estimated_weight FROM orders o LEFT JOIN customer_addresses ca ON ca.id=o.delivery_address_id LEFT JOIN store_coverage sc ON sc.id=ca.store_coverage_id LEFT JOIN order_items oi ON oi.order_id=o.id LEFT JOIN products p ON p.id=oi.product_id WHERE o.store_id=$1";
+        var sql = status is null ? select+" ORDER BY o.created_at DESC,p.name" : select+" AND o.delivery_status=$2::delivery_status ORDER BY o.created_at DESC,p.name";
+        await using var command = status is null ? Command(connection, null, sql, Guid.Parse(storeId)) : Command(connection, null, sql, Guid.Parse(storeId), status);
+        await using var reader = await command.ExecuteReaderAsync(ct); var orders = new List<(OrderRow Order,ManagerDeliveryAddress Address,List<ManagerOrderItem> Items)>(); var index=new Dictionary<Guid,int>();
+        while(await reader.ReadAsync(ct)){var order=ReadOrder(reader);if(!index.TryGetValue(order.Id,out var i)){i=orders.Count;index.Add(order.Id,i);var address=reader.IsDBNull(23)?new ManagerDeliveryAddress(null,null,null,null,null,null):new ManagerDeliveryAddress(reader.GetGuid(23).ToString(),ReadText(reader,26),ReadText(reader,25),ReadText(reader,27),ReadText(reader,28),ReadText(reader,24));orders.Add((order,address,new()));}if(!reader.IsDBNull(29))orders[index[order.Id]].Items.Add(new ManagerOrderItem(reader.GetString(30),reader.GetDecimal(31),reader.GetDecimal(33),reader.GetGuid(29).ToString(),reader.GetDecimal(32),reader.IsDBNull(34)?null:reader.GetDecimal(34)));}
+        return orders.Select(x=>ToManager(x.Order,x.Address,x.Items)).ToArray();
+    }
+    public Task<ManagerOrderDto> PickAsync(string storeId, string userId, string orderId, CancellationToken ct) => TransitionAsync(storeId, userId, orderId, "picked", ct);
+    public Task<ManagerOrderDto> UpdateStatusAsync(string storeId, string userId, string orderId, string next, CancellationToken ct) => TransitionAsync(storeId, userId, orderId, next, ct);
+    private async Task<ManagerOrderDto> TransitionAsync(string storeId,string userId,string orderId,string next,CancellationToken ct)
+    {
+        await using var connection=await dataSource.OpenConnectionAsync(ct); await using var transaction=await connection.BeginTransactionAsync(ct); try { var order=await LockedAsync(connection,transaction,storeId,orderId,ct); if(!IsTransitionAllowed(order.DeliveryStatus,next)) throw new ManagerOrderContractException(400,"Invalid status transition","invalid_status_transition"); var updated=await UpdateStatusAsync(connection,transaction,order.Id,next,ct); await InsertHistoryAsync(connection,transaction,order.Id,Guid.Parse(userId),order.DeliveryStatus,next,ct); if(next is "failed" or "cancelled") updated=await ReturnInventoryAsync(connection,transaction,updated,ct); if(next=="delivered") updated=await CompleteDeliveredAsync(connection,transaction,updated,Guid.Parse(userId),ct); await transaction.CommitAsync(ct); return ToManager(updated,null,null); } catch { await transaction.RollbackAsync(CancellationToken.None); throw; }
+    }
+    public async Task<ManagerOrderDto> ActualWeightAsync(string storeId,string orderId,decimal actualWeight,CancellationToken ct)
+    {
+        await using var connection=await dataSource.OpenConnectionAsync(ct); await using var transaction=await connection.BeginTransactionAsync(ct); try { var order=await LockedAsync(connection,transaction,storeId,orderId,ct); if(order.DeliveryStatus!="picked") throw new ManagerOrderContractException(400,"Invalid status transition","invalid_status_transition"); if(order.EstimatedWeight is not { } estimated || estimated<=0) throw new ManagerOrderContractException(400,"Order estimated_weight is invalid","invalid_estimated_weight"); var goods=order.Subtotal*(actualWeight/estimated); var final=RoundMoney(decimal.Max(0m,goods-order.DiscountTotal)+order.DeliveryFee); var capture=RoundMoney(decimal.Min(order.OnlinePaymentAmount,final)); var pos=RoundMoney(decimal.Max(0m,final-capture)); await using var command=Command(connection,transaction,"UPDATE orders SET actual_weight=$2,final_total=$3,total_price=$3,online_capture_amount=$4,pos_terminal_topup=$5,updated_at=NOW() WHERE id=$1 RETURNING *",order.Id,actualWeight,final,capture,pos); await using var reader=await command.ExecuteReaderAsync(ct); await reader.ReadAsync(ct); var updated=ReadOrder(reader); await reader.CloseAsync(); await transaction.CommitAsync(ct); return ToManager(updated,null,null); } catch { await transaction.RollbackAsync(CancellationToken.None); throw; }
+    }
+    private static async Task<OrderRow> UpdateStatusAsync(NpgsqlConnection c,NpgsqlTransaction t,Guid id,string status,CancellationToken ct){await using var q=Command(c,t,"UPDATE orders SET delivery_status=$2::delivery_status,updated_at=NOW() WHERE id=$1 RETURNING *",id,status);await using var r=await q.ExecuteReaderAsync(ct);await r.ReadAsync(ct);return ReadOrder(r);}
+    private static async Task<OrderRow> LockedAsync(NpgsqlConnection c,NpgsqlTransaction t,string store,string id,CancellationToken ct){await using var q=Command(c,t,"SELECT * FROM orders WHERE id=$1 AND store_id=$2 FOR UPDATE",Guid.Parse(id),Guid.Parse(store));await using var r=await q.ExecuteReaderAsync(ct);if(!await r.ReadAsync(ct))throw new ManagerOrderContractException(404,"Order was not found","order_not_found");return ReadOrder(r);}
+    private static async Task InsertHistoryAsync(NpgsqlConnection c,NpgsqlTransaction t,Guid order,Guid user,string oldStatus,string newStatus,CancellationToken ct){await using var q=Command(c,t,"INSERT INTO order_status_history(order_id,old_status,new_status,changed_by) VALUES($1,$2::delivery_status,$3::delivery_status,$4)",order,oldStatus,newStatus,user);await q.ExecuteNonQueryAsync(ct);}
+    private static bool IsTransitionAllowed(string from,string to)=>from switch { "new"=>to is "picked" or "failed" or "cancelled", "picked"=>to is "in_delivery" or "failed" or "cancelled", "in_delivery"=>to is "delivered" or "failed", _=>false };
+    private static async Task<OrderRow> ReturnInventoryAsync(NpgsqlConnection c,NpgsqlTransaction t,OrderRow order,CancellationToken ct)
+    {
+        const string sql="UPDATE store_inventory si SET quantity=si.quantity+returned.quantity,stock_quantity=si.stock_quantity+returned.stock_quantity,status='available',updated_at=NOW() FROM (SELECT oi.product_id,SUM(oi.quantity) AS quantity,SUM(CEIL(oi.quantity)::int) AS stock_quantity FROM order_items oi WHERE oi.order_id=$1 GROUP BY oi.product_id) returned WHERE si.store_id=$2 AND si.product_id=returned.product_id";
+        await using var q=Command(c,t,sql,order.Id,order.StoreId); await q.ExecuteNonQueryAsync(ct); return order;
+    }
+    private static async Task<OrderRow> CompleteDeliveredAsync(NpgsqlConnection c,NpgsqlTransaction t,OrderRow order,Guid user,CancellationToken ct)
+    {
+        if(order.PosTerminalTopup>0){await using var payment=Command(c,t,"INSERT INTO payments(order_id,method,amount,status,provider_payload) VALUES($1,'pos_terminal',$2,'completed',jsonb_build_object('source','courier_pos','confirmed_by',$3::text))",order.Id,order.PosTerminalTopup,user);await payment.ExecuteNonQueryAsync(ct);}
+        await using var q=Command(c,t,"UPDATE orders SET payment_status='fully_paid',delivered_at=NOW(),updated_at=NOW() WHERE id=$1 RETURNING *",order.Id);await using var r=await q.ExecuteReaderAsync(ct);await r.ReadAsync(ct);return ReadOrder(r);
+    }
+    private static async Task<ManagerOrderDto> DetailAsync(NpgsqlConnection c,NpgsqlTransaction? t,OrderRow order,CancellationToken ct){ManagerDeliveryAddress? address=new(null,null,null,null,null,null); if(order.DeliveryAddressId is { } a){await using var q=Command(c,t,"SELECT ca.id,sc.address,ca.entrance,ca.floor,ca.apartment,ca.entrance_code FROM customer_addresses ca JOIN store_coverage sc ON sc.id=ca.store_coverage_id WHERE ca.id=$1",a);await using var r=await q.ExecuteReaderAsync(ct);if(await r.ReadAsync(ct))address=new(r.GetGuid(0).ToString(),ReadText(r,3),ReadText(r,2),ReadText(r,4),ReadText(r,5),ReadText(r,1));} var items=new List<ManagerOrderItem>();await using(var q=Command(c,t,"SELECT oi.product_id,p.name,oi.quantity,oi.price_per_unit,oi.line_total,oi.estimated_weight FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=$1 ORDER BY p.name",order.Id)){await using var r=await q.ExecuteReaderAsync(ct);while(await r.ReadAsync(ct))items.Add(new(r.GetString(1),r.GetDecimal(2),r.GetDecimal(4),r.GetGuid(0).ToString(),r.GetDecimal(3),r.IsDBNull(5)?null:r.GetDecimal(5)));}return ToManager(order,address,items);}
+    private static ManagerOrderDto ToManager(OrderRow o,ManagerDeliveryAddress? a,IReadOnlyList<ManagerOrderItem>? items)=>new(o.Id.ToString(),o.OrderNumber,o.StoreId.ToString(),o.CustomerId.ToString(),o.DeliveryAddressId?.ToString(),Numeric(o.Subtotal,"0.00"),Numeric(o.DiscountTotal,"0.00"),Numeric(o.DeliveryFee,"0.00"),o.EstimatedWeight is { } ew?Numeric(ew,"0.000"):null,o.ActualWeight is { } aw?Numeric(aw,"0.000"):null,Numeric(o.OnlinePaymentAmount,"0.00"),Numeric(o.OnlineCaptureAmount,"0.00"),Numeric(o.PosTerminalTopup,"0.00"),Numeric(o.FinalTotal,"0.00"),Numeric(o.TotalPrice,"0.00"),o.FulfillmentWindow,o.DeliveryDate is { } d?DateOnlyTimestamp(d):null,o.DeliveryTimeSlot,o.DeliveryStatus,o.PaymentStatus,o.DeliveredAt is { } da?Timestamp(da):null,Timestamp(o.CreatedAt),Timestamp(o.UpdatedAt),a,items);
+    private static string? ReadText(NpgsqlDataReader r,int ordinal)=>r.IsDBNull(ordinal)?null:r.GetString(ordinal);
 }

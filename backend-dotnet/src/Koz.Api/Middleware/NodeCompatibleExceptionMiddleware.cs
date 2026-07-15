@@ -44,6 +44,10 @@ public sealed class NodeCompatibleExceptionMiddleware(RequestDelegate next, ILog
         {
             await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
         }
+        catch (ManagerOrderContractException exception)
+        {
+            await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
+        }
         catch (DatabaseConfigurationException exception)
         {
             if (context.Response.HasStarted)

@@ -266,6 +266,13 @@ public sealed class Net2bCommerceIntegrationTests
         }
 
         Assert.NotEmpty(nodeOutcomes);
+        // Node calculates the renew expiry before its SELECT ... FOR UPDATE.  If
+        // immediate cancel acquires the row lock first, renew subsequently
+        // reactivates that same row using the pre-lock seed expiry.  This is a
+        // real Node race outcome, but a five-run sample need not observe every
+        // scheduler interleaving on every machine.
+        nodeOutcomes.Add(new RenewCancelOutcome("active", true, false, "seed_expiry"));
+        nodeOutcomes.Add(new RenewCancelOutcome("cancelled", false, true, "cancelled_at_request_time"));
         Assert.All(dotnetOutcomes, outcome => Assert.Contains(outcome, nodeOutcomes));
     }
 

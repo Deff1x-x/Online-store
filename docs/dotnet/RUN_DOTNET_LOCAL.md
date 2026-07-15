@@ -125,3 +125,39 @@ For Node↔.NET NET-3A integration/contract tests, create only `koz_dotnet_net3a
 $env:KOZ_NET3A_TEST_CONNECTION_STRING = 'Host=localhost;Port=5432;Database=koz_dotnet_net3a_test;Username=postgres;Password=<password>'
 dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.csproj --filter FullyQualifiedName~Net3aOrderCreateIntegrationTests
 ```
+
+## NET-3B manager processing smoke check
+
+Use a manager JWT issued by the staff login; its store is taken solely from the JWT.
+
+```powershell
+$manager = Invoke-RestMethod http://localhost:5000/api/auth/staff/login -Method Post -ContentType 'application/json' -Body (@{ email = 'manager@koz.kz'; password = '<seed password>' } | ConvertTo-Json)
+$headers = @{ Authorization = "Bearer $($manager.token)" }
+$orderId = '<order UUID for the manager store>'
+
+Invoke-RestMethod "http://localhost:5000/api/my-store/orders/$orderId/pick" -Method Put -Headers $headers -ContentType 'application/json' -Body '{}'
+Invoke-RestMethod "http://localhost:5000/api/my-store/orders/$orderId/actual-weight" -Method Put -Headers $headers -ContentType 'application/json' -Body (@{ actual_weight = 1.42 } | ConvertTo-Json)
+Invoke-RestMethod "http://localhost:5000/api/my-store/orders/$orderId/status" -Method Put -Headers $headers -ContentType 'application/json' -Body (@{ delivery_status = 'in_delivery' } | ConvertTo-Json)
+```
+
+The NET-3B contract suite creates and accepts only `koz_dotnet_net3b_test`; it resets its deterministic rows and starts Node and .NET against the same database:
+
+```powershell
+$env:KOZ_NET3B_TEST_CONNECTION_STRING = 'Host=localhost;Port=5432;Database=koz_dotnet_net3b_test;Username=postgres;Password=<password>'
+dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.csproj --filter FullyQualifiedName~Net3bManagerProcessingIntegrationTests
+```
+
+## NET-3C customer order reads
+
+Node mounts no customer cancellation URL. With a customer JWT:
+
+```powershell
+$headers = @{ Authorization = 'Bearer <customer JWT>' }
+Invoke-RestMethod http://localhost:5000/api/my-orders -Headers $headers
+Invoke-RestMethod 'http://localhost:5000/api/my-orders/<order UUID>' -Headers $headers
+```
+
+```powershell
+$env:KOZ_NET3C_TEST_CONNECTION_STRING = 'Host=localhost;Port=5432;Database=koz_dotnet_net3c_test;Username=postgres;Password=<password>'
+dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.csproj --filter FullyQualifiedName~Net3cCustomerOrderLifecycleIntegrationTests
+```

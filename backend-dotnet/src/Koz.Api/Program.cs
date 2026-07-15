@@ -38,6 +38,10 @@ builder.Services.AddSingleton<ICommerceRepository, PostgresCommerceRepository>()
 builder.Services.AddSingleton<CommerceService>();
 builder.Services.AddSingleton<IOrderRepository, PostgresOrderRepository>();
 builder.Services.AddSingleton<OrderService>();
+builder.Services.AddSingleton<IManagerOrderRepository, PostgresOrderRepository>();
+builder.Services.AddSingleton<ManagerOrderService>();
+builder.Services.AddSingleton<ICustomerOrderRepository, PostgresOrderRepository>();
+builder.Services.AddSingleton<CustomerOrderService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
