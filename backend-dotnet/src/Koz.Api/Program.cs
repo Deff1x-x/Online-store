@@ -6,12 +6,14 @@ using Koz.Application.Read;
 using Koz.Application.Commerce;
 using Koz.Application.Orders;
 using Koz.Application.AdminCatalog;
+using Koz.Application.AdminCustomers;
 using Koz.Infrastructure.Auth;
 using Koz.Infrastructure.Postgres;
 using Koz.Infrastructure.Read;
 using Koz.Infrastructure.Commerce;
 using Koz.Infrastructure.Orders;
 using Koz.Infrastructure.AdminCatalog;
+using Koz.Infrastructure.AdminCustomers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -48,6 +50,8 @@ builder.Services.AddSingleton<IManagerInventoryRepository, PostgresOrderReposito
 builder.Services.AddSingleton<ManagerInventoryService>();
 builder.Services.AddSingleton<IAdminCatalogRepository, PostgresAdminCatalogRepository>();
 builder.Services.AddSingleton<AdminCatalogService>();
+builder.Services.AddSingleton<IAdminCustomerRepository, PostgresAdminCustomerRepository>();
+builder.Services.AddSingleton<AdminCustomerService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 

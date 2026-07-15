@@ -1,0 +1,3 @@
+using System.Text.Json.Nodes;
+namespace Koz.Application.AdminCustomers;
+public interface IAdminCustomerRepository{Task<JsonObject> ListAsync(AdminCustomerQuery q,CancellationToken ct);Task<JsonObject> DetailAsync(string id,CancellationToken ct);Task<JsonObject> SubscriptionsAsync(AdminSubscriptionQuery q,CancellationToken ct);Task<JsonObject> RenewAsync(string id,CancellationToken ct);Task<JsonObject> PauseAsync(string id,CancellationToken ct);Task<JsonObject> CancelAsync(string id,bool immediate,CancellationToken ct);Task<JsonObject> ConsentLogsAsync(CancellationToken ct);Task<JsonObject> ExportAsync(AdminCustomerQuery q,CancellationToken ct);}

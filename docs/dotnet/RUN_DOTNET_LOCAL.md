@@ -151,6 +151,17 @@ dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.cspro
 
 ## NET-4B Admin Catalog smoke checks
 
+## NET-4C Admin Customers smoke checks
+
+```powershell
+$headers = @{ Authorization = 'Bearer <admin_customers JWT>' }
+Invoke-RestMethod 'http://localhost:5000/api/admin/customers/customers?page=1&limit=20&search=Ali' -Headers $headers
+Invoke-RestMethod 'http://localhost:5000/api/admin/customers/customers/<customer UUID>' -Headers $headers
+Invoke-RestMethod 'http://localhost:5000/api/admin/customers/customers/<customer UUID>/subscription/renew' -Method Put -Headers $headers
+Invoke-RestMethod 'http://localhost:5000/api/admin/customers/customers/<customer UUID>/subscription/pause' -Method Put -Headers $headers
+Invoke-RestMethod 'http://localhost:5000/api/admin/customers/customers/<customer UUID>/subscription/cancel' -Method Put -Headers $headers -ContentType 'application/json' -Body (@{ immediate = $false } | ConvertTo-Json)
+```
+
 Use a staff JWT issued to an `admin_catalog` user; do not store a token or password in a script.
 
 ```powershell

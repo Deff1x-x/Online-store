@@ -4,6 +4,7 @@ using Koz.Application.Read;
 using Koz.Application.Commerce;
 using Koz.Application.Orders;
 using Koz.Application.AdminCatalog;
+using Koz.Application.AdminCustomers;
 
 namespace Koz.Api.Middleware;
 
@@ -50,6 +51,10 @@ public sealed class NodeCompatibleExceptionMiddleware(RequestDelegate next, ILog
             await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
         }
         catch (AdminCatalogContractException exception)
+        {
+            await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
+        }
+        catch (AdminCustomerContractException exception)
         {
             await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
         }

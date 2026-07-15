@@ -165,6 +165,10 @@ Implementation: `admin-operations.controller.js` → `admin-operations.service.j
 
 ## NET-4B: Admin Catalog (implemented and parity-tested)
 
+## NET-4C: Admin Customers (implemented)
+
+Mounted under `/api/admin/customers`, all eight routes require JWT role `admin_customers`: `GET customers`, `GET customers/:id`, `GET subscriptions`, `PUT subscription/renew`, `PUT subscription/cancel`, `PUT subscription/pause`, `GET audit-logs/consents`, and `POST export/customers`. The module retains Node's query defaults (`page=1`, `limit=20`, max 100), customer `created_at DESC` ordering, recent order limit 10, subscription wrapper and soft cancel (`auto_renew=false` unless `immediate:true`).
+
 All routes below are the 18 routes mounted by `src/app.js` through `admin-catalog.routes.js`; every route requires a JWT with exactly the `admin_catalog` role.  The .NET implementation is `AdminCatalogController` -> `AdminCatalogService` -> `PostgresAdminCatalogRepository`.  It preserves Node wrappers, PostgreSQL numeric-as-string serialization, UTC timestamps, sorting, upserts and soft-deletes.
 
 | Method, URL | Request / response wrapper | Node side effect | .NET status |
