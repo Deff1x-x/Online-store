@@ -149,6 +149,28 @@ dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.cspro
 
 ## NET-3C customer order reads
 
+## NET-4B Admin Catalog smoke checks
+
+Use a staff JWT issued to an `admin_catalog` user; do not store a token or password in a script.
+
+```powershell
+$headers = @{ Authorization = 'Bearer <admin_catalog JWT>' }
+$storeId = '11111111-1111-1111-1111-111111111111'
+$productId = '33333333-3333-3333-3333-333333333333'
+
+Invoke-RestMethod http://localhost:5000/api/admin/catalog/stores -Headers $headers
+Invoke-RestMethod "http://localhost:5000/api/admin/catalog/stores/$storeId/inventory" -Headers $headers
+Invoke-RestMethod "http://localhost:5000/api/admin/catalog/stores/$storeId/inventory/$productId" -Method Put -Headers $headers -ContentType 'application/json' -Body (@{ quantity = 10; selling_price = 900; is_visible = $true } | ConvertTo-Json)
+Invoke-RestMethod http://localhost:5000/api/admin/catalog/promo-codes -Headers $headers
+```
+
+The Node↔.NET suite accepts only `koz_dotnet_net4b_test` and must be initialized from `database/schema.sql`, migrations `001` and `002`, and `database/seed.sql`:
+
+```powershell
+$env:KOZ_NET4B_TEST_CONNECTION_STRING = 'Host=localhost;Port=5432;Database=koz_dotnet_net4b_test;Username=postgres;Password=<password>'
+dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.csproj --filter FullyQualifiedName~Net4bAdminCatalogIntegrationTests
+```
+
 Node mounts no customer cancellation URL. With a customer JWT:
 
 ```powershell

@@ -163,6 +163,27 @@ Implementation: `admin-operations.controller.js` → `admin-operations.service.j
 
 ## NET-3A: mounted order creation
 
+## NET-4B: Admin Catalog (implemented and parity-tested)
+
+All routes below are the 18 routes mounted by `src/app.js` through `admin-catalog.routes.js`; every route requires a JWT with exactly the `admin_catalog` role.  The .NET implementation is `AdminCatalogController` -> `AdminCatalogService` -> `PostgresAdminCatalogRepository`.  It preserves Node wrappers, PostgreSQL numeric-as-string serialization, UTC timestamps, sorting, upserts and soft-deletes.
+
+| Method, URL | Request / response wrapper | Node side effect | .NET status |
+|---|---|---|---|
+| GET `/api/admin/catalog/stores` | `{stores}` | newest-first stores, settings/counts joined | implemented |
+| POST `/api/admin/catalog/stores` | store payload -> **201** `{store}` | store plus default delivery settings in one transaction | implemented |
+| PUT / DELETE `/api/admin/catalog/stores/:id` | partial store -> `{store}` | update / `status=inactive` soft-delete | implemented |
+| POST `/api/admin/catalog/coverage` | `{store_id,address,entrance_count?}` -> `{coverage}` | `(store_id,address)` upsert; 201 insert, 200 update | implemented |
+| GET `/api/admin/catalog/products` | `{products}` | newest-first products | implemented |
+| POST / PUT / DELETE `/api/admin/catalog/products[/:id]` | product -> `{product}` | create/update / `is_active=false` soft-delete | implemented |
+| GET `/api/admin/catalog/stores/:id/inventory` | `{inventory}` | category/name order; nullable local price/date | implemented |
+| PUT `/api/admin/catalog/stores/:id/inventory/:product_id` | inventory payload -> `{inventory}` | `(store_id,product_id)` upsert, quantity-derived status | implemented |
+| POST `/api/admin/catalog/stores/:id/inventory/:product_id/incoming` | `{quantity}` -> `{inventory}` | atomic stock increment and receipt date | implemented |
+| GET `/api/admin/catalog/promo-codes` | `{promo_codes}` | newest-first promotions | implemented |
+| POST / PUT / DELETE `/api/admin/catalog/promo-codes[/:id]` | promo -> `{promo_code}` | uppercase code create/update / `is_active=false` soft-disable | implemented |
+| GET / PUT `/api/admin/catalog/delivery-settings/:store_id` | settings -> `{delivery_settings}` | read / store-keyed settings upsert | implemented |
+
+Contract failures retain Node's `{message,code}` shape, including `invalid_reference`, duplicate promo `duplicate_entity`, validation codes, and resource-not-found codes.  Real Task.WhenAll/barrier tests cover duplicate store/promo creation, coverage upsert and inventory mutation across five runs.
+
 | Method, URL | Auth | Request | Exact response / side effects | Implementation | Status |
 |---|---|---|---|---|---|
 | POST `/api/orders` | JWT `customer` only | `{payment_method:"online",delivery_address_id:UUID,items:[{product_id:UUID,quantity:number}],promo_code?:string}` | **201** `{order_id,order_number,breakdown,payment_options,order}`. `breakdown` and payment amounts are JSON numbers; persisted `order` and `order.items` numeric columns are JSON strings, as returned by Node `pg`. Reserves `store_inventory`, inserts `orders`, `order_items`, status history, and only the winning first-order *or* promo discount. It does **not** insert `payments`. | `orders.routes.js` → `orders.controller.js` → `orders.service.js` → `orders.repository.js`; .NET `OrdersController` → `OrderService` → `PostgresOrderRepository` | NET-3A |
