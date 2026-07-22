@@ -100,6 +100,19 @@ public sealed class HealthEndpointTests : IClassFixture<KozApiFactory>
 public sealed class ProductionSurfaceTests
 {
     [Fact]
+    public async Task Production_kaspi_webhook_preserves_node_disabled_contract()
+    {
+        using var factory = new ProductionKozApiFactory();
+        using var client = factory.CreateClient();
+        using var response = await client.PostAsync("/api/webhooks/kaspi", new StringContent("{}", Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("kaspi_webhook_disabled", payload.RootElement.GetProperty("code").GetString());
+        Assert.Equal("Kaspi webhook is disabled until a provider contract is configured", payload.RootElement.GetProperty("message").GetString());
+    }
+
+    [Fact]
     public async Task Production_does_not_expose_swagger_or_localhost_cors()
     {
         using var factory = new ProductionKozApiFactory();

@@ -6,6 +6,9 @@ using Koz.Application.Orders;
 using Koz.Application.AdminCatalog;
 using Koz.Application.AdminCustomers;
 using Koz.Application.AdminOperations;
+using Koz.Application.Payments;
+using Koz.Application.Notifications;
+using Koz.Application.Customers;
 
 namespace Koz.Api.Middleware;
 
@@ -60,6 +63,18 @@ public sealed class NodeCompatibleExceptionMiddleware(RequestDelegate next, ILog
             await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
         }
         catch (AdminOperationsContractException exception)
+        {
+            await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
+        }
+        catch (PaymentContractException exception)
+        {
+            await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
+        }
+        catch (NotificationContractException exception)
+        {
+            await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
+        }
+        catch (CustomerMutationContractException exception)
         {
             await WriteError(context, exception.StatusCode, exception.Message, exception.Code);
         }
