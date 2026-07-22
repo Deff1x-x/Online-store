@@ -132,9 +132,31 @@ public sealed class ProductionSurfaceTests
 
 public sealed class DatabaseConfigurationTests
 {
+    private static IDisposable ClearDatabaseAndJwtEnv()
+    {
+        var keys = new[]
+        {
+            "DATABASE_HOST", "DATABASE_PORT", "DATABASE_NAME", "DATABASE_USER", "DATABASE_PASSWORD", "JWT_SECRET",
+        };
+        var prior = keys.ToDictionary(k => k, Environment.GetEnvironmentVariable);
+        foreach (var key in keys)
+            Environment.SetEnvironmentVariable(key, null);
+        return new RestoreEnv(prior);
+    }
+
+    private sealed class RestoreEnv(Dictionary<string, string?> prior) : IDisposable
+    {
+        public void Dispose()
+        {
+            foreach (var pair in prior)
+                Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+        }
+    }
+
     [Fact]
     public void Invalid_database_configuration_does_not_disclose_password()
     {
+        using var _ = ClearDatabaseAndJwtEnv();
         const string password = "must-not-appear-in-errors";
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -154,8 +176,43 @@ public sealed class DatabaseConfigurationTests
     }
 
     [Fact]
+    public void Production_rejects_development_database_password()
+    {
+        using var _ = ClearDatabaseAndJwtEnv();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Database:Host"] = "db.example",
+                ["Database:Port"] = "5432",
+                ["Database:Name"] = "online_store",
+                ["Database:User"] = "app",
+                ["Database:Password"] = "postgres",
+            })
+            .Build();
+
+        var exception = Assert.Throws<DatabaseConfigurationException>(
+            () => DatabaseOptions.Load(configuration, new ProductionHostEnvironment()));
+
+        Assert.Contains("development default", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Production_requires_explicit_database_settings()
+    {
+        using var _ = ClearDatabaseAndJwtEnv();
+        var configuration = new ConfigurationBuilder().Build();
+
+        var exception = Assert.Throws<DatabaseConfigurationException>(
+            () => DatabaseOptions.Load(configuration, new ProductionHostEnvironment()));
+
+        Assert.Contains("DATABASE_HOST", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("DATABASE_PASSWORD", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Production_without_jwt_secret_fails_without_disclosing_a_secret()
     {
+        using var _ = ClearDatabaseAndJwtEnv();
         var configuration = new ConfigurationBuilder().Build();
 
         var exception = Assert.Throws<AuthContractException>(() => JwtOptions.Load(configuration, new ProductionHostEnvironment()));
@@ -179,8 +236,15 @@ public sealed class ProductionKozApiFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Prefer configuration over ambient shell env left by local .env workflows.
+        Environment.SetEnvironmentVariable("DATABASE_PASSWORD", null);
+        Environment.SetEnvironmentVariable("JWT_SECRET", null);
         builder.UseEnvironment("Production");
-        builder.UseSetting("Database:Password", "test-password");
+        builder.UseSetting("Database:Host", "localhost");
+        builder.UseSetting("Database:Port", "5432");
+        builder.UseSetting("Database:Name", "online_store");
+        builder.UseSetting("Database:User", "postgres");
+        builder.UseSetting("Database:Password", "test-password-not-default");
         builder.UseSetting("Database:ValidateOnStartup", "false");
         builder.UseSetting("Jwt:Secret", "production-test-jwt-secret-with-at-least-32-characters");
     }

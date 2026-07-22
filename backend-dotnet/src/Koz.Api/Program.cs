@@ -32,7 +32,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
-var databaseOptions = DatabaseOptions.Load(builder.Configuration);
+var databaseOptions = DatabaseOptions.Load(builder.Configuration, builder.Environment);
 var jwtOptions = JwtOptions.Load(builder.Configuration, builder.Environment);
 builder.Services.AddSingleton(databaseOptions);
 builder.Services.AddSingleton(jwtOptions);
