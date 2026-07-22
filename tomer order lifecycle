@@ -1,0 +1,18 @@
+ backend-dotnet/src/Koz.Api/Auth/AuthPolicies.cs    |   2 [32m+[m
+ .../Koz.Api/Controllers/ManagerOrdersController.cs |   9 [32m+[m
+ .../src/Koz.Api/Controllers/MyOrdersController.cs  |  20 [32m++[m
+ .../NodeCompatibleExceptionMiddleware.cs           |   4 [32m+[m
+ backend-dotnet/src/Koz.Api/Program.cs              |   4 [32m+[m
+ .../Koz.Application/Orders/CustomerOrderService.cs |  15 [32m++[m
+ .../Koz.Application/Orders/ManagerOrderService.cs  |  13 [32m+[m
+ .../Koz.Application/Orders/OrderAbstractions.cs    |  12 [32m+[m
+ .../src/Koz.Application/Orders/OrderContracts.cs   |  80 [32m++++++[m
+ .../Orders/PostgresOrderRepository.cs              |  74 [32m+++++[m[31m-[m
+ .../Net2bCommerceIntegrationTests.cs               |   7 [32m+[m
+ .../Net3bManagerProcessingIntegrationTests.cs      | 267 [32m+++++++++++++++++++++[m
+ .../Net3cCustomerOrderLifecycleIntegrationTests.cs |  84 [32m+++++++[m
+ docs/dotnet/API_CONTRACT_INVENTORY.md              |  15 [32m+[m[31m-[m
+ docs/dotnet/NET3B_MANAGER_PROCESSING_REPORT.md     |  33 [32m+++[m
+ .../NET3C_CUSTOMER_ORDER_LIFECYCLE_REPORT.md       |  17 [32m++[m
+ docs/dotnet/RUN_DOTNET_LOCAL.md                    |  36 [32m+++[m
+ 17 files changed, 688 insertions(+), 4 deletions(-)
