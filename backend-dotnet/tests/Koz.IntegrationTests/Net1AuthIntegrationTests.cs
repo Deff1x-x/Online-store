@@ -581,5 +581,6 @@ public sealed class Net1ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Database:Password", ConnectionString.Password);
         builder.UseSetting("Database:ValidateOnStartup", "true");
         builder.UseSetting("Jwt:Secret", "net1-testing-jwt-secret-with-at-least-32-characters");
+        builder.UseSetting("Otp:Secret", "net1-testing-otp-hmac-secret-with-at-least-32-characters");
     }
 }

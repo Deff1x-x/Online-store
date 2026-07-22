@@ -22,9 +22,19 @@ public interface IAccessTokenIssuer
 public interface IAuthRuntime
 {
     DateTimeOffset UtcNow { get; }
-    bool IsDevelopment { get; }
     bool UseFixedTestOtp { get; }
-    void LogDevelopmentOtp(string phone, string code);
+    void LogOtpChallengeCreated();
+}
+
+public interface IOtpCodeHasher
+{
+    string Hash(string phone, string code);
+}
+
+public interface IOtpChallengeStore
+{
+    Task SaveAsync(string phone, string codeHash, int lifetimeSeconds, CancellationToken cancellationToken);
+    Task<bool> TryConsumeAsync(string phone, string codeHash, CancellationToken cancellationToken);
 }
 
 public interface ICurrentUser

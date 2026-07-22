@@ -9,7 +9,8 @@ public sealed class AuthController(AuthService authService) : ControllerBase
 {
     [HttpPost("otp")]
     [ProducesResponseType<OtpResponse>(StatusCodes.Status200OK)]
-    public ActionResult<OtpResponse> CreateOtp([FromBody] OtpRequest request) => Ok(authService.CreateOtpChallenge(request));
+    public async Task<ActionResult<OtpResponse>> CreateOtp([FromBody] OtpRequest request, CancellationToken cancellationToken) =>
+        Ok(await authService.CreateOtpChallengeAsync(request, cancellationToken));
 
     [HttpPost("register")]
     [ProducesResponseType<CustomerAuthResponse>(StatusCodes.Status201Created)]

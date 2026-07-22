@@ -239,6 +239,7 @@ public sealed class ProductionKozApiFactory : WebApplicationFactory<Program>
         // Prefer configuration over ambient shell env left by local .env workflows.
         Environment.SetEnvironmentVariable("DATABASE_PASSWORD", null);
         Environment.SetEnvironmentVariable("JWT_SECRET", null);
+        Environment.SetEnvironmentVariable("OTP_SECRET", null);
         builder.UseEnvironment("Production");
         builder.UseSetting("Database:Host", "localhost");
         builder.UseSetting("Database:Port", "5432");
@@ -247,6 +248,8 @@ public sealed class ProductionKozApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Database:Password", "test-password-not-default");
         builder.UseSetting("Database:ValidateOnStartup", "false");
         builder.UseSetting("Jwt:Secret", "production-test-jwt-secret-with-at-least-32-characters");
+        builder.UseSetting("Otp:Secret", "production-test-otp-hmac-secret-with-at-least-32-ch");
+        builder.UseSetting("Cors:AllowedOrigins:0", "https://app.example.com");
     }
 }
 

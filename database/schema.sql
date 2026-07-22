@@ -418,6 +418,14 @@ CREATE TABLE notification_queue (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE otp_challenges (
+    phone VARCHAR(32) PRIMARY KEY,
+    code_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    consumed_at TIMESTAMPTZ
+);
+
 CREATE INDEX idx_store_coverage_store_id ON store_coverage(store_id);
 CREATE INDEX idx_users_role ON users(role);
 CREATE INDEX idx_users_store_id ON users(store_id);
@@ -438,5 +446,6 @@ CREATE INDEX idx_promo_code_usage_customer_id ON promo_code_usage(customer_id);
 CREATE INDEX idx_order_status_history_order_id ON order_status_history(order_id);
 CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX idx_notification_queue_status_scheduled ON notification_queue(status, scheduled_at);
+CREATE INDEX idx_otp_challenges_expires_at ON otp_challenges(expires_at) WHERE consumed_at IS NULL;
 
 COMMIT;

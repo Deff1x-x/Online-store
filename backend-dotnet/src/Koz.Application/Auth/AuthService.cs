@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using Koz.Domain.Auth;
@@ -9,13 +8,14 @@ public sealed class AuthService(
     IAuthRepository repository,
     IPasswordVerifier passwordVerifier,
     IAccessTokenIssuer accessTokenIssuer,
-    IAuthRuntime runtime)
+    IAuthRuntime runtime,
+    IOtpChallengeStore otpChallengeStore,
+    IOtpCodeHasher otpCodeHasher)
 {
     private const int OtpLifetimeSeconds = 300;
     private const int RefreshTokenLifetimeDays = 30;
-    private readonly ConcurrentDictionary<string, OtpChallenge> _otpStorage = new(StringComparer.Ordinal);
 
-    public OtpResponse CreateOtpChallenge(OtpRequest request)
+    public async Task<OtpResponse> CreateOtpChallengeAsync(OtpRequest request, CancellationToken cancellationToken)
     {
         var phone = NormalizePhone(request.Phone);
         if (string.IsNullOrEmpty(phone))
@@ -24,12 +24,8 @@ public sealed class AuthService(
         }
 
         var code = runtime.UseFixedTestOtp ? "1234" : RandomNumberGenerator.GetInt32(0, 10000).ToString("D4");
-        _otpStorage[phone] = new OtpChallenge(code, runtime.UtcNow.AddSeconds(OtpLifetimeSeconds));
-
-        if (runtime.IsDevelopment)
-        {
-            runtime.LogDevelopmentOtp(phone, code);
-        }
+        await otpChallengeStore.SaveAsync(phone, otpCodeHasher.Hash(phone, code), OtpLifetimeSeconds, cancellationToken);
+        runtime.LogOtpChallengeCreated();
 
         return new OtpResponse("OTP code has been sent", OtpLifetimeSeconds);
     }
@@ -47,7 +43,7 @@ public sealed class AuthService(
             throw new AuthContractException(400, "Phone, OTP code, name and store_id are required", "registration_required_fields");
         }
 
-        if (!VerifyOtp(phone, request.Code))
+        if (!await TryConsumeOtpAsync(phone, request.Code, cancellationToken))
         {
             throw new AuthContractException(403, "Invalid or expired OTP code", "invalid_otp");
         }
@@ -80,7 +76,7 @@ public sealed class AuthService(
             throw new AuthContractException(400, "Phone and OTP code are required", "login_required_fields");
         }
 
-        if (!VerifyOtp(phone, request.Code))
+        if (!await TryConsumeOtpAsync(phone, request.Code, cancellationToken))
         {
             throw new AuthContractException(403, "Invalid or expired OTP code", "invalid_otp");
         }
@@ -147,6 +143,9 @@ public sealed class AuthService(
         return new CustomerAuthResponse(accessTokenIssuer.Issue(user), newRefreshToken, ToCustomerUser(user));
     }
 
+    private Task<bool> TryConsumeOtpAsync(string phone, string code, CancellationToken cancellationToken) =>
+        otpChallengeStore.TryConsumeAsync(phone, otpCodeHasher.Hash(phone, code), cancellationToken);
+
     private async Task<CustomerAuthResponse> IssueCustomerTokensAsync(AuthenticatedUser user, RequestContext context, CancellationToken cancellationToken)
     {
         var refreshToken = GenerateRefreshToken();
@@ -155,28 +154,6 @@ public sealed class AuthService(
             cancellationToken);
 
         return new CustomerAuthResponse(accessTokenIssuer.Issue(user), refreshToken, ToCustomerUser(user));
-    }
-
-    private bool VerifyOtp(string phone, string code)
-    {
-        if (!_otpStorage.TryGetValue(phone, out var challenge))
-        {
-            return false;
-        }
-
-        if (challenge.ExpiresAt < runtime.UtcNow)
-        {
-            _otpStorage.TryRemove(phone, out _);
-            return false;
-        }
-
-        if (!string.Equals(challenge.Code, code, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        _otpStorage.TryRemove(phone, out _);
-        return true;
     }
 
     private static AuthUserResponse ToCustomerUser(AuthenticatedUser user) => new(
@@ -197,8 +174,6 @@ public sealed class AuthService(
         .Replace('/', '_');
 
     private static string HashRefreshToken(string refreshToken) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(refreshToken))).ToLowerInvariant();
-
-    private sealed record OtpChallenge(string Code, DateTimeOffset ExpiresAt);
 }
 
 public sealed class DuplicateUserContactException : Exception

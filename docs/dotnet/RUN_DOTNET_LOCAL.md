@@ -19,9 +19,17 @@ The Node-compatible variables take precedence over appsettings:
 | `DATABASE_NAME` | `Database:Name` / `Database__Name` |
 | `DATABASE_USER` | `Database:User` / `Database__User` |
 | `DATABASE_PASSWORD` | `Database:Password` / `Database__Password` |
-| `JWT_SECRET` | required for Auth in production; development uses the same non-production fallback as Node only when it is absent |
+| `JWT_SECRET` | required outside local Development; Development may use the built-in non-production fallback only when unset |
+| `OTP_SECRET` | required outside local Development; HMAC key for OTP hashes; must differ from `JWT_SECRET` (≥32 chars) |
+| `Cors__AllowedOrigins__N` | required in Production (≥1 absolute http/https origin; `*` rejected) |
 
-`Database:ValidateOnStartup` defaults to `true`; it runs `SELECT 1` with Npgsql and logs only host, port and database — never the password. Development CORS permits exactly `http://localhost:5173` and `http://localhost:5174`. Production origins must be supplied through `Cors__AllowedOrigins__0`, etc.; credentials are not enabled.
+`Database:ValidateOnStartup` defaults to `true`; it runs `SELECT 1` with Npgsql and logs only host, port and database — never the password. Development CORS permits exactly `http://localhost:5173` and `http://localhost:5174` via `appsettings.Development.json`. Production refuses to start with an empty origin list; credentials are not enabled; wildcards are rejected.
+
+Load balancers should probe process liveness via `GET /api/health` (unchanged contract) and DB readiness via internal `GET /health/ready` (`{ "status": "ready"|"not_ready" }`, HTTP 503 when PostgreSQL is unavailable).
+
+OTP challenges are stored in PostgreSQL table `otp_challenges` (HMAC hash only). Apply migration `database/migrations/003_otp_challenges.sql` (or use updated `schema.sql`). Do not rely on sticky sessions.
+
+Kaspi webhooks are fail-closed in every environment (`503` / `kaspi_webhook_disabled`) until a real provider signature contract is configured.
 
 ## Windows PowerShell
 
@@ -66,7 +74,7 @@ $refresh = @{ refresh_token = '<opaque refresh token>' } | ConvertTo-Json
 Invoke-RestMethod http://localhost:5000/api/auth/refresh -Method Post -ContentType 'application/json' -Body $refresh
 ```
 
-Customer login and registration use the current OTP contract. The OTP is logged only in `Development`; never copy a real token, OTP or secret into a tracked file. Production requires a non-development `JWT_SECRET` of at least 32 characters.
+Customer login and registration use the current OTP contract. Application logs record only that an OTP challenge was created — never the code or full phone. OTP hashes use `OTP_SECRET` (HMAC), never `JWT_SECRET`. Never copy a real token, OTP or secret into a tracked file. Staging/Testing/Production require explicit non-development `JWT_SECRET` and `OTP_SECRET` of at least 32 characters.
 
 ## Public read smoke checks (NET-2A)
 
@@ -150,6 +158,22 @@ dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.cspro
 ## NET-3C customer order reads
 
 ## NET-4B Admin Catalog smoke checks
+
+## OTP shared storage suite
+
+```powershell
+$env:KOZ_OTP_TEST_CONNECTION_STRING = 'Host=localhost;Port=5432;Database=koz_dotnet_otp_test;Username=postgres;Password=<password>'
+# ensure migration 003 applied
+psql -U postgres -h localhost -d koz_dotnet_otp_test -f database/migrations/003_otp_challenges.sql
+dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.csproj --filter FullyQualifiedName~NetOtpSharedStorageIntegrationTests
+```
+
+## NET-4A Manager inventory/analytics contract suite
+
+```powershell
+$env:KOZ_NET4A_TEST_CONNECTION_STRING = 'Host=localhost;Port=5432;Database=koz_dotnet_net4a_test;Username=postgres;Password=<password>'
+dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.csproj --filter FullyQualifiedName~Net4aManagerInventoryIntegrationTests
+```
 
 ## NET-4C Admin Customers smoke checks
 

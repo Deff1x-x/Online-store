@@ -1,5 +1,6 @@
 using System.Text;
 using Koz.Application.Auth;
+using Microsoft.Extensions.Hosting;
 
 namespace Koz.Api.Auth;
 
@@ -16,15 +17,28 @@ public sealed class JwtOptions
     public static JwtOptions Load(IConfiguration configuration, IHostEnvironment environment)
     {
         var secret = Environment.GetEnvironmentVariable("JWT_SECRET")?.Trim()
-            ?? configuration["Jwt:Secret"]?.Trim()
-            ?? DevelopmentSecret;
+            ?? configuration["Jwt:Secret"]?.Trim();
 
-        if (environment.IsProduction() &&
-            (secret.Length < 32 || secret == "change_this_secret" || secret == DevelopmentSecret))
+        if (string.IsNullOrEmpty(secret))
         {
-            throw new AuthContractException(500, "JWT_SECRET must be configured with at least 32 non-development characters in production", "jwt_secret_invalid");
+            if (!environment.IsDevelopment())
+            {
+                throw InvalidSecret();
+            }
+
+            secret = DevelopmentSecret;
+        }
+
+        if (secret.Length < 32
+            || secret == "change_this_secret"
+            || (secret == DevelopmentSecret && !environment.IsDevelopment()))
+        {
+            throw InvalidSecret();
         }
 
         return new JwtOptions(secret);
     }
+
+    private static AuthContractException InvalidSecret() =>
+        new(500, "JWT_SECRET must be configured with at least 32 non-development characters", "jwt_secret_invalid");
 }

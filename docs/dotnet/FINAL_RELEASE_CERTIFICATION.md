@@ -1,7 +1,7 @@
 # FINAL RELEASE CERTIFICATION
 
-**Goal:** [NET-6](NET6_GOAL.md) — confirm ASP.NET Core can replace Node.js in production.  
-**Date:** 2026-07-23  
+**Goal:** [NET-6](NET6_GOAL.md) — confirm ASP.NET Core can replace Node.js in production.
+**Date:** 2026-07-23
 **Verdict:** **PROJECT READY FOR PRODUCTION** (Node-replacement cutover)
 
 ---
@@ -78,7 +78,7 @@ Evidence: `Net6ProductionCertificationTests.SecurityMatrix_*`, prior Net1–Net4
 | Slow SQL | No new indexes required for cutover; same schema as Node |
 | Parallel requests | 20× parallel catalog GETs succeeded without 5xx/`route_not_found` |
 | Connection leaks | Repositories use `await using` on connections/commands; pooling enabled |
-| Memory growth | No unbounded static caches beyond OTP map (same as Node) |
+| Memory growth | No unbounded static caches; OTP challenges live in PostgreSQL |
 | CancellationToken | Propagated through services/repositories |
 | Deadlocks | Order/manager suites cover transactional races; no new locking patterns in NET-6 |
 
@@ -105,9 +105,9 @@ No frontend source changes required for API host switch.
 | Logging | Console (stdout) — capture via platform |
 | Health | `GET /api/health` (Node parity); startup `SELECT 1` when `ValidateOnStartup` |
 | Graceful shutdown | ASP.NET Generic Host SIGTERM (parity with Node’s lack of custom drain) |
-| Environment variables | `DATABASE_*`, `JWT_SECRET`, `Cors__AllowedOrigins__*` |
+| Environment variables | `DATABASE_*`, `JWT_SECRET`, `OTP_SECRET`, `Cors__AllowedOrigins__*` |
 | Docker | Neither Node nor .NET ships in-repo Docker; deploy via host/platform recipe |
-| Migrations | Shared SQL (`database/schema.sql` + `001`/`002`); not applied by .NET at runtime |
+| Migrations | Shared SQL (`database/schema.sql` + `001`/`002`/`003`); not applied by .NET at runtime |
 | Startup validation | `DatabaseConnectionValidator` |
 
 ---
@@ -122,9 +122,9 @@ No frontend source changes required for API host switch.
 
 ## 9. Fixes applied
 
-- `backend-dotnet/src/Koz.Api/Configuration/DatabaseOptions.cs` — Node-equivalent production guards  
-- `backend-dotnet/src/Koz.Api/Program.cs` — pass `builder.Environment` into Load  
-- Unit tests updated for production DB/JWT isolation from ambient shell env  
+- `backend-dotnet/src/Koz.Api/Configuration/DatabaseOptions.cs` — Node-equivalent production guards
+- `backend-dotnet/src/Koz.Api/Program.cs` — pass `builder.Environment` into Load
+- Unit tests updated for production DB/JWT isolation from ambient shell env
 
 ---
 
@@ -132,21 +132,21 @@ No frontend source changes required for API host switch.
 
 These exist **identically** on Node and therefore do not block replacing Node with .NET:
 
-1. Kaspi webhook returns `503 kaspi_webhook_disabled` in Production; online pay uses placeholder provider URLs (provider work = historical NET-10).  
-2. OTP challenges are in-process memory (not multi-instance safe).  
-3. Notification endpoints enqueue DB rows only; no delivery worker in either stack.  
-4. No in-repo container images for either backend.
+1. Kaspi webhook returns `503 kaspi_webhook_disabled` in Production; online pay uses placeholder provider URLs (provider work = historical NET-10).
+2. Notification endpoints enqueue DB rows only; no delivery worker in either stack.
+3. No in-repo container images for either backend.
+4. Node still keeps OTP in process memory; .NET uses shared `otp_challenges` (HMAC) — apply migration `003` and set `OTP_SECRET`.
 
 ---
 
 ## 11. Recommendations to disable Node
 
-1. Deploy `Koz.Api` with production `DATABASE_*`, strong `JWT_SECRET` (≥32, non-dev), and `Cors__AllowedOrigins` for Client/Staff origins.  
-2. Apply the same PostgreSQL schema/migrations already used by Node.  
-3. Rebuild Client + Staff with `VITE_API_URL` pointing at the .NET `/api` base.  
-4. Switch traffic via reverse proxy / DNS (keep Node warm for immediate rollback).  
-5. Monitor `/api/health`, auth error rates, order create/manager paths, and DB pool.  
-6. After soak, stop Node processes; retain Node repo for rollback until Kaspi/OTP HA work is scheduled separately.
+1. Deploy `Koz.Api` with production `DATABASE_*`, strong `JWT_SECRET` and `OTP_SECRET` (≥32, distinct), and `Cors__AllowedOrigins` for Client/Staff origins.
+2. Apply PostgreSQL schema/migrations including `003_otp_challenges.sql`.
+3. Rebuild Client + Staff with `VITE_API_URL` pointing at the .NET `/api` base.
+4. Switch traffic via reverse proxy / DNS (keep Node warm for immediate rollback).
+5. Monitor `/api/health`, `/health/ready`, auth error rates, order create/manager paths, and DB pool.
+6. After soak, stop Node processes; retain Node repo for rollback until Kaspi provider work is scheduled separately.
 
 ---
 

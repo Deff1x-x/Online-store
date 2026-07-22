@@ -23,7 +23,9 @@ using Koz.Infrastructure.Payments;
 using Koz.Infrastructure.Notifications;
 using Koz.Infrastructure.Customers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 
@@ -34,12 +36,18 @@ builder.Logging.AddConsole();
 
 var databaseOptions = DatabaseOptions.Load(builder.Configuration, builder.Environment);
 var jwtOptions = JwtOptions.Load(builder.Configuration, builder.Environment);
+var otpOptions = OtpOptions.Load(builder.Configuration, builder.Environment, jwtOptions.Secret);
+var corsOptions = CorsOptions.Load(builder.Configuration, builder.Environment);
 builder.Services.AddSingleton(databaseOptions);
 builder.Services.AddSingleton(jwtOptions);
+builder.Services.AddSingleton(otpOptions);
+builder.Services.AddSingleton(corsOptions);
 builder.Services.AddSingleton<NpgsqlDataSource>(_ => NpgsqlDataSource.Create(databaseOptions.ConnectionString));
 builder.Services.AddHostedService<DatabaseConnectionValidator>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<IAuthRepository, PostgresAuthRepository>();
+builder.Services.AddSingleton<IOtpChallengeStore, PostgresOtpChallengeStore>();
+builder.Services.AddSingleton<IOtpCodeHasher, HmacOtpCodeHasher>();
 builder.Services.AddSingleton<IPasswordVerifier, BcryptPasswordVerifier>();
 builder.Services.AddSingleton<IAccessTokenIssuer, JwtAccessTokenIssuer>();
 builder.Services.AddSingleton<IAuthRuntime, AspNetAuthRuntime>();
@@ -70,6 +78,7 @@ builder.Services.AddSingleton<ICustomerMutationRepository, PostgresCustomerMutat
 builder.Services.AddSingleton<CustomerMutationService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+builder.Services.AddHealthChecks().AddCheck<PostgresReadinessHealthCheck>("postgres", tags: ["ready"]);
 
 builder.Services.AddControllers();
 builder.Services.Configure<ApiBehaviorOptions>(options =>
@@ -139,8 +148,14 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("koz", policy =>
     {
-        var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-        policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+        if (corsOptions.AllowedOrigins.Count == 0)
+        {
+            // Non-production may run with no browser origins (API-only). Policy denies browser CORS.
+            policy.SetIsOriginAllowed(_ => false);
+            return;
+        }
+
+        policy.WithOrigins(corsOptions.AllowedOrigins.ToArray()).AllowAnyHeader().AllowAnyMethod();
     });
 });
 
@@ -158,6 +173,22 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var status = report.Status == HealthStatus.Healthy ? "ready" : "not_ready";
+        await context.Response.WriteAsJsonAsync(new { status });
+    },
+    ResultStatusCodes =
+    {
+        [HealthStatus.Healthy] = StatusCodes.Status200OK,
+        [HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable,
+        [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable,
+    },
+});
 if (app.Environment.IsEnvironment("Testing"))
 {
     TestingAuthEndpoints.Map(app);
