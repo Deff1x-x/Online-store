@@ -38,6 +38,7 @@ var databaseOptions = DatabaseOptions.Load(builder.Configuration, builder.Enviro
 var jwtOptions = JwtOptions.Load(builder.Configuration, builder.Environment);
 var otpOptions = OtpOptions.Load(builder.Configuration, builder.Environment, jwtOptions.Secret);
 var corsOptions = CorsOptions.Load(builder.Configuration, builder.Environment);
+var paymentsOptions = PaymentsOptions.Load(builder.Configuration, builder.Environment);
 builder.Services.Configure<HostOptions>(options =>
 {
     // Bounded drain for in-flight work; do not wait forever for long requests.
@@ -48,6 +49,7 @@ builder.Services.AddSingleton(databaseOptions);
 builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton(otpOptions);
 builder.Services.AddSingleton(corsOptions);
+builder.Services.AddSingleton(paymentsOptions);
 builder.Services.AddSingleton<NpgsqlDataSource>(_ => NpgsqlDataSource.Create(databaseOptions.ConnectionString));
 builder.Services.AddHostedService<DatabaseConnectionValidator>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);

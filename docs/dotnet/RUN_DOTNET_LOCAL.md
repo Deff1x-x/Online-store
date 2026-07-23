@@ -31,6 +31,24 @@ OTP challenges are stored in PostgreSQL table `otp_challenges` (HMAC hash only).
 
 Kaspi webhooks are fail-closed in every environment (`503` / `kaspi_webhook_disabled`) until a real provider signature contract is configured.
 
+In **Production**, online payment initiation is disabled by default (`503` / `online_payment_disabled`) until a real provider contract exists. Non-production remains enabled for Node parity tests. See `BACKEND_CONFIGURATION_REFERENCE.md`.
+
+## Deployment / cutover rehearsal
+
+```powershell
+./scripts/dotnet/prepare-db.ps1 -ConnectionString 'Host=localhost;Port=5432;Database=koz_dotnet_cutover_fresh;Username=postgres;Password=<password>' -Mode schema
+./scripts/dotnet/publish-api.ps1
+./scripts/dotnet/validate-release.ps1
+```
+
+Docker (when Docker is available):
+
+```powershell
+docker build -f backend-dotnet/Dockerfile -t koz-api:local backend-dotnet
+```
+
+Cutover/rollback docs: `BACKEND_CUTOVER_RUNBOOK.md`, `BACKEND_ROLLBACK_RUNBOOK.md`, `BACKEND_RELEASE_CHECKLIST.md`.
+
 ## Load / resilience audit harness
 
 Isolated DB `koz_dotnet_load_test` (schema + migrations + seed):

@@ -4,3 +4,7 @@ npm-debug.log*
 dist/
 .dotnet/
 .dotnet-install.ps1
+artifacts/
+backend-dotnet/**/artifacts/
+**/bin/
+**/obj/

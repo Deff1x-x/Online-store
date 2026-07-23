@@ -89,6 +89,17 @@ public sealed class NodeCompatibleExceptionMiddleware(RequestDelegate next, ILog
             logger.LogError(exception, "Configuration error while handling {Method} {Path}.", context.Request.Method, context.Request.Path);
             await WriteError(context, StatusCodes.Status503ServiceUnavailable, "Configuration error", "configuration_error");
         }
+        catch (PaymentsConfigurationException exception)
+        {
+            if (context.Response.HasStarted)
+            {
+                logger.LogWarning(exception, "Payments configuration error occurred after the response started for {Method} {Path}.", context.Request.Method, context.Request.Path);
+                throw;
+            }
+
+            logger.LogError(exception, "Payments configuration error while handling {Method} {Path}.", context.Request.Method, context.Request.Path);
+            await WriteError(context, StatusCodes.Status503ServiceUnavailable, "Configuration error", "configuration_error");
+        }
         catch (OperationCanceledException exception) when (context.RequestAborted.IsCancellationRequested)
         {
             // Client disconnect / request abort is not a server fault.
