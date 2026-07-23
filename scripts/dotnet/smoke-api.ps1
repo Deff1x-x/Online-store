@@ -1,10 +1,10 @@
 #!/usr/bin/env pwsh
-$ErrorActionPreference = 'Stop'
 param(
     [string]$BaseUrl = 'http://127.0.0.1:8080',
     [string]$AllowedOrigin = 'https://app.example.com',
     [string]$DeniedOrigin = 'https://evil.example.com'
 )
+$ErrorActionPreference = 'Stop'
 
 function Assert-Status([Microsoft.PowerShell.Commands.WebResponseObject]$Response, [int]$Expected, [string]$Label) {
     if ($Response.StatusCode -ne $Expected) {
@@ -33,11 +33,13 @@ $phone = ('cut' + [guid]::NewGuid().ToString('N')).Substring(0, 16)
 $otp = Invoke-WebRequest -Uri "$BaseUrl/api/auth/otp" -Method Post -ContentType 'application/json' -Body (@{ phone = $phone } | ConvertTo-Json) -UseBasicParsing
 Assert-Status $otp 200 'otp'
 
-$webhook = $null
 try {
-    $webhook = Invoke-WebRequest -Uri "$BaseUrl/api/webhooks/kaspi" -Method Post -ContentType 'application/json' -Body '{}' -UseBasicParsing
+    Invoke-WebRequest -Uri "$BaseUrl/api/webhooks/kaspi" -Method Post -ContentType 'application/json' -Body '{}' -UseBasicParsing | Out-Null
+    throw 'webhook expected 503'
 } catch {
-    $webhook = $_.Exception.Response
+    $status = $null
+    if ($_.Exception.Response) { $status = [int]$_.Exception.Response.StatusCode }
+    if ($status -ne 503) { throw "webhook expected 503 got $status" }
 }
-# Expect 503 fail-closed
-Write-Host 'Smoke core probes passed (auth OTP + health + CORS). Full business smoke requires seeded customer fixtures.'
+
+Write-Host 'Smoke core probes passed (auth OTP + health + CORS + webhook fail-closed). Full business smoke requires seeded customer fixtures.'

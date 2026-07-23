@@ -70,7 +70,7 @@ dotnet run --project backend-dotnet/tools/Koz.LoadHarness -- stress
 dotnet run --project backend-dotnet/tools/Koz.LoadHarness -- soak
 ```
 
-Pool / timeout knobs: `Database:MaxPoolSize`, `Database:ConnectionTimeoutSeconds`, `Database:CommandTimeoutSeconds`, `Host:ShutdownTimeoutSeconds` (see `BACKEND_FAILURE_MODE_RUNBOOK.md`).
+Pool / timeout knobs (defaults match `BACKEND_CONFIGURATION_REFERENCE.md`): `DATABASE_MAX_POOL_SIZE` / `Database:MaxPoolSize` = **100**, `DATABASE_CONNECTION_TIMEOUT_SECONDS` = **15**, `DATABASE_COMMAND_TIMEOUT_SECONDS` = **30**, `Host:ShutdownTimeoutSeconds` = **30** (see `BACKEND_FAILURE_MODE_RUNBOOK.md`).
 
 ## Windows PowerShell
 
