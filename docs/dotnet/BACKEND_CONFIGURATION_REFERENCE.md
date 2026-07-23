@@ -57,3 +57,4 @@ Appsettings mirrors (non-secret): `Database:*`, `Cors:AllowedOrigins`, `Payments
 
 - H4: prefer carts ≤ 20 line items.
 - OTP requires migration `003` + `OTP_SECRET`.
+- **Connection budget (mandatory ops):** `replica_count × DATABASE_MAX_POOL_SIZE + operational connections < PostgreSQL max_connections`. Pre-prod validation used 2 × 20 against `max_connections=100`. Do **not** run multiple replicas with the default pool of 100 against a DB whose `max_connections` is 100.
