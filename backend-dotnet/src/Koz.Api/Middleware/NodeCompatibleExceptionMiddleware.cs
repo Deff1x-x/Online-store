@@ -89,6 +89,18 @@ public sealed class NodeCompatibleExceptionMiddleware(RequestDelegate next, ILog
             logger.LogError(exception, "Configuration error while handling {Method} {Path}.", context.Request.Method, context.Request.Path);
             await WriteError(context, StatusCodes.Status503ServiceUnavailable, "Configuration error", "configuration_error");
         }
+        catch (OperationCanceledException exception) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // Client disconnect / request abort is not a server fault.
+            if (context.Response.HasStarted)
+            {
+                logger.LogDebug(exception, "Request aborted after the response started for {Method} {Path}.", context.Request.Method, context.Request.Path);
+                throw;
+            }
+
+            logger.LogInformation("Request aborted while handling {Method} {Path}.", context.Request.Method, context.Request.Path);
+            context.Response.StatusCode = StatusCodes.Status499ClientClosedRequest;
+        }
         catch (Exception exception)
         {
             if (context.Response.HasStarted)

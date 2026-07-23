@@ -38,6 +38,12 @@ var databaseOptions = DatabaseOptions.Load(builder.Configuration, builder.Enviro
 var jwtOptions = JwtOptions.Load(builder.Configuration, builder.Environment);
 var otpOptions = OtpOptions.Load(builder.Configuration, builder.Environment, jwtOptions.Secret);
 var corsOptions = CorsOptions.Load(builder.Configuration, builder.Environment);
+builder.Services.Configure<HostOptions>(options =>
+{
+    // Bounded drain for in-flight work; do not wait forever for long requests.
+    var seconds = builder.Configuration.GetValue("Host:ShutdownTimeoutSeconds", 30);
+    options.ShutdownTimeout = TimeSpan.FromSeconds(Math.Clamp(seconds, 5, 120));
+});
 builder.Services.AddSingleton(databaseOptions);
 builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton(otpOptions);
@@ -78,7 +84,9 @@ builder.Services.AddSingleton<ICustomerMutationRepository, PostgresCustomerMutat
 builder.Services.AddSingleton<CustomerMutationService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
-builder.Services.AddHealthChecks().AddCheck<PostgresReadinessHealthCheck>("postgres", tags: ["ready"]);
+builder.Services.AddHealthChecks()
+    .AddCheck<ShutdownReadinessHealthCheck>("shutdown", tags: ["ready"])
+    .AddCheck<PostgresReadinessHealthCheck>("postgres", tags: ["ready"]);
 
 builder.Services.AddControllers();
 builder.Services.Configure<ApiBehaviorOptions>(options =>

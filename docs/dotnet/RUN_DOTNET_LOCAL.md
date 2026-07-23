@@ -31,6 +31,29 @@ OTP challenges are stored in PostgreSQL table `otp_challenges` (HMAC hash only).
 
 Kaspi webhooks are fail-closed in every environment (`503` / `kaspi_webhook_disabled`) until a real provider signature contract is configured.
 
+## Load / resilience audit harness
+
+Isolated DB `koz_dotnet_load_test` (schema + migrations + seed):
+
+```powershell
+$env:KOZ_LOAD_TEST_CONNECTION_STRING = 'Host=localhost;Port=5432;Database=koz_dotnet_load_test;Username=postgres;Password=<password>'
+dotnet test backend-dotnet/tests/Koz.IntegrationTests/Koz.IntegrationTests.csproj --filter FullyQualifiedName~LoadResilience
+```
+
+External load profiles (API must already be listening):
+
+```powershell
+$env:KOZ_LOAD_BASE_URL = 'http://127.0.0.1:5055'
+# optional shorter/longer window: $env:KOZ_LOAD_DURATION_SEC = '120'
+dotnet run --project backend-dotnet/tools/Koz.LoadHarness -- smoke
+dotnet run --project backend-dotnet/tools/Koz.LoadHarness -- normal
+dotnet run --project backend-dotnet/tools/Koz.LoadHarness -- peak
+dotnet run --project backend-dotnet/tools/Koz.LoadHarness -- stress
+dotnet run --project backend-dotnet/tools/Koz.LoadHarness -- soak
+```
+
+Pool / timeout knobs: `Database:MaxPoolSize`, `Database:ConnectionTimeoutSeconds`, `Database:CommandTimeoutSeconds`, `Host:ShutdownTimeoutSeconds` (see `BACKEND_FAILURE_MODE_RUNBOOK.md`).
+
 ## Windows PowerShell
 
 ```powershell

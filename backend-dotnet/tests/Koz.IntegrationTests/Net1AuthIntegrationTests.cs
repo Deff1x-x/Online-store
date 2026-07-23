@@ -565,7 +565,7 @@ public sealed class NodeAuthServer : IDisposable
     }
 }
 
-public sealed class Net1ApiFactory : WebApplicationFactory<Program>
+public class Net1ApiFactory : WebApplicationFactory<Program>
 {
     public Net1ApiFactory(string connectionString) => ConnectionString = new NpgsqlConnectionStringBuilder(connectionString);
 
@@ -574,11 +574,7 @@ public sealed class Net1ApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.UseSetting("Database:Host", ConnectionString.Host);
-        builder.UseSetting("Database:Port", ConnectionString.Port.ToString());
-        builder.UseSetting("Database:Name", ConnectionString.Database);
-        builder.UseSetting("Database:User", ConnectionString.Username);
-        builder.UseSetting("Database:Password", ConnectionString.Password);
+        builder.UseSetting("Database:ConnectionString", ConnectionString.ConnectionString);
         builder.UseSetting("Database:ValidateOnStartup", "true");
         builder.UseSetting("Jwt:Secret", "net1-testing-jwt-secret-with-at-least-32-characters");
         builder.UseSetting("Otp:Secret", "net1-testing-otp-hmac-secret-with-at-least-32-characters");
