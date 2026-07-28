@@ -1,0 +1,122 @@
+# Koz production stack — Linux VPS + Docker Compose + Nginx.
+# Secrets: deploy/vps/.env (never commit). Copy from .env.production.example.
+#
+# PostgreSQL is EXTERNAL by default (managed provider OR Postgres installed on the VPS host).
+# Optional co-located DB: docker compose --profile postgres -f docker-compose.yml -f docker-compose.postgres.yml up -d
+#
+# Public ports: 80/443 only (Nginx). Backend ports stay on the internal network.
+
+name: koz-prod
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      dotnet-api:
+        condition: service_healthy
+      node-api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/tls:/etc/nginx/tls:ro
+      - nginx_logs:/var/log/nginx
+      - certbot_www:/var/www/certbot:ro
+    networks:
+      - koz_edge
+      - koz_internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    stop_grace_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+  dotnet-api:
+    build:
+      context: ../../backend-dotnet
+      dockerfile: Dockerfile
+    image: koz-api:${KOZ_IMAGE_TAG:-local}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      # Forwarded headers: trust only the Compose internal network (set CIDR in .env).
+      ForwardedHeaders__Enabled: "true"
+    expose:
+      - "8080"
+    networks:
+      - koz_internal
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 25s
+    # >= Host:ShutdownTimeoutSeconds default (30)
+    stop_grace_period: 35s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  node-api:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.node
+    image: koz-node:${KOZ_IMAGE_TAG:-local}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    expose:
+      - "3000"
+    networks:
+      - koz_internal
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+    stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 512M
+
+networks:
+  koz_edge:
+    driver: bridge
+  koz_internal:
+    driver: bridge
+    internal: false
+
+volumes:
+  nginx_logs:
+  certbot_www:

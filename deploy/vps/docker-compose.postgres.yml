@@ -1,0 +1,52 @@
+# Optional co-located PostgreSQL on the same VPS (Compose profile: postgres).
+# Prefer managed PostgreSQL or a host-managed Postgres when available.
+# Usage:
+#   docker compose --profile postgres -f docker-compose.yml -f docker-compose.postgres.yml up -d
+#
+# Does NOT publish 5432 to the public internet. Connect from app containers via service name `postgres`.
+
+services:
+  postgres:
+    profiles: ["postgres"]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../../database:/database:ro
+      - postgres_backups:/backups
+    networks:
+      - koz_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    # Intentionally no ports: mapping — internal network only.
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    command:
+      - postgres
+      - -c
+      - max_connections=${POSTGRES_MAX_CONNECTIONS:-100}
+      - -c
+      - shared_buffers=${POSTGRES_SHARED_BUFFERS:-256MB}
+
+volumes:
+  postgres_data:
+  postgres_backups:

@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1
+# Production Node rollback API image (Express). Secrets via runtime env only.
+
+FROM node:20-bookworm-slim AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+# Root package is a workspace monorepo; install production deps for the API process.
+RUN npm ci --omit=dev --ignore-scripts
+
+FROM node:20-bookworm-slim AS final
+WORKDIR /app
+RUN groupadd --system --gid 10002 koznode \
+ && useradd --system --uid 10002 --gid koznode --home-dir /app --shell /usr/sbin/nologin koznode \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
+COPY src ./src
+USER koznode
+ENV NODE_ENV=production
+ENV PORT=3000
+EXPOSE 3000
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:3000/api/health || exit 1
+CMD ["node", "src/server.js"]

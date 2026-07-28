@@ -1,5 +1,6 @@
 node_modules/
 .env
+deploy/vps/.env
 npm-debug.log*
 dist/
 .dotnet/
@@ -8,3 +9,6 @@ artifacts/
 backend-dotnet/**/artifacts/
 **/bin/
 **/obj/
+deploy/vps/nginx/tls/*.pem
+deploy/vps/nginx/tls/*.key
+!deploy/vps/nginx/tls/README.md

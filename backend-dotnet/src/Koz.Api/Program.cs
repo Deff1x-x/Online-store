@@ -24,6 +24,7 @@ using Koz.Infrastructure.Notifications;
 using Koz.Infrastructure.Customers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
@@ -39,6 +40,7 @@ var jwtOptions = JwtOptions.Load(builder.Configuration, builder.Environment);
 var otpOptions = OtpOptions.Load(builder.Configuration, builder.Environment, jwtOptions.Secret);
 var corsOptions = CorsOptions.Load(builder.Configuration, builder.Environment);
 var paymentsOptions = PaymentsOptions.Load(builder.Configuration, builder.Environment);
+var forwardedProxyOptions = ForwardedProxyOptions.Load(builder.Configuration, builder.Environment);
 builder.Services.Configure<HostOptions>(options =>
 {
     // Bounded drain for in-flight work; do not wait forever for long requests.
@@ -50,6 +52,11 @@ builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton(otpOptions);
 builder.Services.AddSingleton(corsOptions);
 builder.Services.AddSingleton(paymentsOptions);
+builder.Services.AddSingleton(forwardedProxyOptions);
+if (forwardedProxyOptions.Enabled)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options => forwardedProxyOptions.Apply(options));
+}
 builder.Services.AddSingleton<NpgsqlDataSource>(_ => NpgsqlDataSource.Create(databaseOptions.ConnectionString));
 builder.Services.AddHostedService<DatabaseConnectionValidator>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
@@ -170,6 +177,12 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Forwarded headers must run before anything that reads scheme / remote IP.
+if (forwardedProxyOptions.Enabled)
+{
+    app.UseForwardedHeaders();
+}
 
 app.UseMiddleware<NodeCompatibleExceptionMiddleware>();
 app.UseCors("koz");

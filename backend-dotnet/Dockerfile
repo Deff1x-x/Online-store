@@ -17,11 +17,16 @@ RUN dotnet publish src/Koz.Api/Koz.Api.csproj -c Release -o /app/publish --no-re
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 RUN groupadd --system --gid 10001 koz \
- && useradd --system --uid 10001 --gid koz --home-dir /app --shell /usr/sbin/nologin koz
+ && useradd --system --uid 10001 --gid koz --home-dir /app --shell /usr/sbin/nologin koz \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/publish .
 USER koz
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 8080
-# Graceful SIGTERM handled by ASP.NET Core HostOptions.ShutdownTimeout.
+# Compose/orchestrator health probes; graceful SIGTERM via HostOptions.ShutdownTimeout.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:8080/health/ready || exit 1
 ENTRYPOINT ["dotnet", "Koz.Api.dll"]
