@@ -1,6 +1,6 @@
 :root {
   --staff-header-height: 96px;
-  --staff-sidebar-width: 260px;
+  --staff-sidebar-width: 320px;
   --staff-dark: #172317;
   --staff-dark-soft: #203020;
   --staff-content-max: 1440px;
@@ -51,23 +51,36 @@ a {
   font-weight: 800;
 }
 
-.staff-sidebar {
+.staff-sidebar,
+.koz-sidebar.staff-sidebar {
   display: flex;
+  box-sizing: border-box;
   width: var(--staff-sidebar-width);
+  min-width: var(--staff-sidebar-width);
+  max-width: var(--staff-sidebar-width);
   flex-direction: column;
+  flex-shrink: 0;
   border-right: 0;
   background: var(--staff-dark);
   color: var(--koz-color-surface);
   padding: var(--koz-space-4) var(--koz-space-3);
+  overflow: hidden;
 }
 
 .staff-sidebar__title {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   margin-bottom: var(--koz-space-5);
   color: var(--koz-color-surface);
   font-family: var(--koz-font-heading);
-  font-size: var(--koz-font-size-5);
+  font-size: var(--koz-font-size-3);
   font-weight: 700;
-  line-height: var(--koz-line-height-tight);
+  line-height: 1.15;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .staff-nav {
@@ -456,13 +469,16 @@ a {
     font-size: var(--koz-font-size-1);
   }
 
-  .staff-sidebar {
-    width: 220px;
+  .staff-sidebar,
+  .koz-sidebar.staff-sidebar {
+    width: 280px;
+    min-width: 280px;
+    max-width: 280px;
     padding: var(--koz-space-3) var(--koz-space-2);
   }
 
   .staff-sidebar__title {
-    font-size: var(--koz-font-size-4);
+    font-size: var(--koz-font-size-2);
   }
 
   .staff-nav a {
@@ -509,9 +525,12 @@ a {
     display: block;
   }
 
-  .staff-sidebar {
+  .staff-sidebar,
+  .koz-sidebar.staff-sidebar {
     display: flex;
     width: 100%;
+    min-width: 0;
+    max-width: none;
     gap: var(--koz-space-2);
     padding: var(--koz-space-2);
   }
