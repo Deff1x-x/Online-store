@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Rollback traffic to Node. No schema changes. No down migration.
-set -euo pipefail
+set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT/deploy/vps"
 

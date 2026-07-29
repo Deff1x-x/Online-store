@@ -13,34 +13,42 @@ using Xunit;
 
 namespace Koz.Api.Tests;
 
+/// <summary>
+/// TZ А5: pay-online is a <b>placeholder</b> until acquiring contract — default enabled.
+/// Explicit false remains an operational kill-switch (503, no side effects).
+/// </summary>
 public sealed class PaymentsReleaseGateTests
 {
     [Fact]
-    public void Production_defaults_online_initiation_to_disabled()
+    public void Defaults_online_initiation_to_enabled_placeholder_in_all_environments()
     {
         using var _ = ClearPaymentEnv();
-        var options = PaymentsOptions.Load(new ConfigurationBuilder().Build(), new ProductionHostEnvironment { EnvironmentName = "Production" });
-        Assert.False(options.OnlineInitiationEnabled);
+        var production = PaymentsOptions.Load(new ConfigurationBuilder().Build(), new ProductionHostEnvironment { EnvironmentName = "Production" });
+        var testing = PaymentsOptions.Load(new ConfigurationBuilder().Build(), new ProductionHostEnvironment { EnvironmentName = "Testing" });
+        Assert.True(production.OnlineInitiationEnabled);
+        Assert.True(testing.OnlineInitiationEnabled);
     }
 
     [Fact]
-    public void Non_production_defaults_online_initiation_to_enabled_for_parity()
-    {
-        using var _ = ClearPaymentEnv();
-        var options = PaymentsOptions.Load(new ConfigurationBuilder().Build(), new ProductionHostEnvironment { EnvironmentName = "Testing" });
-        Assert.True(options.OnlineInitiationEnabled);
-    }
-
-    [Fact]
-    public void Production_rejects_explicit_enable_without_provider_contract()
+    public void Production_allows_explicit_placeholder_enable()
     {
         using var _ = ClearPaymentEnv();
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["Payments:OnlineInitiationEnabled"] = "true" })
             .Build();
-        var exception = Assert.Throws<PaymentsConfigurationException>(
-            () => PaymentsOptions.Load(configuration, new ProductionHostEnvironment()));
-        Assert.Contains("cannot be enabled in Production", exception.Message, StringComparison.Ordinal);
+        var options = PaymentsOptions.Load(configuration, new ProductionHostEnvironment());
+        Assert.True(options.OnlineInitiationEnabled);
+    }
+
+    [Fact]
+    public void Explicit_false_disables_initiation()
+    {
+        using var _ = ClearPaymentEnv();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Payments:OnlineInitiationEnabled"] = "false" })
+            .Build();
+        var options = PaymentsOptions.Load(configuration, new ProductionHostEnvironment());
+        Assert.False(options.OnlineInitiationEnabled);
     }
 
     [Fact]

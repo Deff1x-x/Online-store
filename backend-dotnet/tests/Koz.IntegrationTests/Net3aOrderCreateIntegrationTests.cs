@@ -152,6 +152,9 @@ public sealed class Net3aOrderCreateIntegrationTests
         await AssertSameErrorAsync(
             await scope.PostAsync(scope.Node.Client, new { payment_method = "online", delivery_address_id = nodeAddress, items = new[] { new { product_id = MilkId, quantity = 1.5m } } }, node.Token),
             await scope.PostAsync(scope.Dotnet, new { payment_method = "online", delivery_address_id = dotnetAddress, items = new[] { new { product_id = MilkId, quantity = 1.5m } } }, dotnet.Token), HttpStatusCode.BadRequest);
+        await AssertSameErrorAsync(
+            await scope.PostAsync(scope.Node.Client, new { payment_method = "online", delivery_address_id = nodeAddress, items = new[] { new { product_id = TomatoesId, quantity = 1.23m } } }, node.Token),
+            await scope.PostAsync(scope.Dotnet, new { payment_method = "online", delivery_address_id = dotnetAddress, items = new[] { new { product_id = TomatoesId, quantity = 1.23m } } }, dotnet.Token), HttpStatusCode.BadRequest);
 
         await scope.SetInventoryQuantityAsync(MilkId, 0m, 0);
         await AssertSameErrorAsync(

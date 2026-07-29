@@ -14,6 +14,11 @@ public sealed class PublicReadController(PublicReadService publicReadService, IC
     public async Task<ActionResult<StoreCatalogResponse>> GetStoreCatalog([FromRoute(Name = "store_id")] string? storeId, CancellationToken cancellationToken) =>
         Ok(await publicReadService.GetStoreCatalogAsync(storeId, cancellationToken));
 
+    [HttpGet("api/stores")]
+    [ProducesResponseType<StoresResponse>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<StoresResponse>> ListStores(CancellationToken cancellationToken) =>
+        Ok(await publicReadService.ListStoresAsync(cancellationToken));
+
     [Authorize(Policy = AuthPolicies.Customer)]
     [HttpGet("api/my-profile")]
     [ProducesResponseType<ProfileResponse>(StatusCodes.Status200OK)]

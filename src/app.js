@@ -9,18 +9,26 @@ import myProfileRoutes from './modules/my-profile/my-profile.routes.js';
 import myStoreRoutes from './modules/my-store/my-store.routes.js';
 import notificationRoutes from './modules/notifications/notifications.routes.js';
 import { myOrdersRoutes, ordersRoutes } from './modules/orders/orders.routes.js';
+import operatorRoutes from './modules/orders/operator.routes.js';
 import paymentRoutes from './modules/payments/payments.routes.js';
 import productRoutes from './modules/products/products.routes.js';
 import promocodeRoutes from './modules/promocodes/promocodes.routes.js';
 import subscriptionRoutes from './modules/subscriptions/subscriptions.routes.js';
 import kaspiWebhookRoutes from './modules/webhooks/kaspi.routes.js';
+import storeRoutes from './modules/stores/store.routes.js';
 import { AppError } from './utils/AppError.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+    : process.env.NODE_ENV === 'production'
+      ? []
+      : true,
+}));
+app.use(express.json({ limit: '16kb' }));
 
 app.use('/api/admin/catalog', adminCatalogRoutes);
 app.use('/api/admin/customers', adminCustomersRoutes);
@@ -32,9 +40,11 @@ app.use('/api/my-store', myStoreRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/my-orders', myOrdersRoutes);
+app.use('/api/operator/orders', operatorRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/promocodes', promocodeRoutes);
+app.use('/api/stores', storeRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/webhooks/kaspi', kaspiWebhookRoutes);
 

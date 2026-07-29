@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Direct smoke against a container (bypass Nginx). Placeholders for origins.
 # Usage: ./direct-smoke.sh dotnet-api 8080
-set -euo pipefail
+set -Eeuo pipefail
 SERVICE="${1:-dotnet-api}"
 PORT="${2:-8080}"
 ORIGIN="${SMOKE_ORIGIN:-https://app.example.com}"

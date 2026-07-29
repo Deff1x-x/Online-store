@@ -16,6 +16,7 @@ import {
 } from "@koz/ui";
 import { useApi, useAuth, useToast, type CustomerAddress } from "@koz/api";
 import { usePaywall } from "../paywall/paywall-context";
+import { isSubscriptionInGracePeriod } from "../subscription/access-rules";
 
 type SubscriptionStatus = "active" | "paused" | "cancelled" | "expired";
 
@@ -208,6 +209,10 @@ export function ProfilePage() {
   }
 
   const isActiveSubscription = profile.subscription_status === "active";
+  const inGrace = isSubscriptionInGracePeriod(
+    profile.subscription_status,
+    profile.subscription_end_date,
+  );
 
   return (
     <PageContainer className="profile-page">
@@ -305,7 +310,9 @@ export function ProfilePage() {
             <div className="profile-card__heading">
               <H2>Членство</H2>
               <Badge tone={isActiveSubscription ? "success" : "warning"}>
-                {SUBSCRIPTION_LABELS[profile.subscription_status]}
+                {inGrace
+                  ? "Льготный период (3 дня)"
+                  : SUBSCRIPTION_LABELS[profile.subscription_status]}
               </Badge>
             </div>
             <dl className="subscription-details">
@@ -318,6 +325,12 @@ export function ProfilePage() {
                 <dd>{profile.subscription_auto_renew ? "Включено" : "Отключено"}</dd>
               </div>
             </dl>
+            {inGrace ? (
+              <p className="subscription-card__note">
+                Оплаченный период закончился: заказы доступны ещё 3 дня (grace). Повторное
+                списание выполняется токеном у платёжного провайдера.
+              </p>
+            ) : null}
             {!isActiveSubscription ? (
               <Button type="button" fullWidth onClick={openPaywall}>
                 Вступить в клуб

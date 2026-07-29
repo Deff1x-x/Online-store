@@ -20,12 +20,12 @@ public sealed class PaymentsController(PaymentService service, ICurrentUser user
     [Authorize(Policy = AuthPolicies.Customer), HttpPost("api/payments/orders/{orderId}/pay-online")]
     public async Task<IActionResult> Pay(string orderId, CancellationToken ct)
     {
-        // Production defaults to disabled (R1). No placeholder URL and no payment/order side effects.
+        // TZ А5: default is kaspi placeholder initiation. Explicit kill-switch → 503, no side effects.
         if (!payments.OnlineInitiationEnabled)
         {
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new
             {
-                message = "Online payment initiation is disabled until a real payment provider is configured",
+                message = "Online payment initiation is disabled by configuration",
                 code = "online_payment_disabled",
             });
         }

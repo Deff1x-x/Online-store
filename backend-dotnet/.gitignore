@@ -4,3 +4,6 @@ TestResults/
 .vs/
 .dotnet/
 .dotnet-install.ps1
+publish/
+*.user
+launchSettings.json.user

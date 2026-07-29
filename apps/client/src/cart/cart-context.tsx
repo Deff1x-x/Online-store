@@ -10,6 +10,12 @@ import {
 import { LocalStorageAdapter, useToast } from "@koz/api";
 import type { StoreProduct } from "../types";
 
+import {
+  normalizeCartQuantity,
+  roundWeightedQuantity,
+  stepperStep,
+} from "./quantity-rules";
+
 const CART_STORAGE_KEY = "koz.client.cart.v1";
 const PROMO_STORAGE_KEY = "koz.client.cart-promo.v1";
 const localStorageAdapter = new LocalStorageAdapter();
@@ -77,10 +83,6 @@ function readAppliedPromo(): AppliedPromo | null {
   }
 }
 
-function roundWeightedQuantity(quantity: number) {
-  return Math.round(quantity * 10) / 10;
-}
-
 export function CartProvider({ children }: PropsWithChildren) {
   const [items, setItems] = useState<CartItem[]>(readCart);
   const [appliedPromo, setAppliedPromoState] = useState<AppliedPromo | null>(readAppliedPromo);
@@ -111,7 +113,7 @@ export function CartProvider({ children }: PropsWithChildren) {
     (product: StoreProduct) => {
       const existing = items.find((item) => item.product_id === product.product_id);
       const stock = Number(product.quantity);
-      const increment = product.is_weighted ? 0.5 : 1;
+      const increment = stepperStep(product.is_weighted);
       const nextQuantity = (existing?.cartQuantity ?? 0) + increment;
 
       if (nextQuantity > stock) {
@@ -148,9 +150,7 @@ export function CartProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      const normalizedQuantity = item.is_weighted
-        ? roundWeightedQuantity(requestedQuantity)
-        : Math.round(requestedQuantity);
+      const normalizedQuantity = normalizeCartQuantity(requestedQuantity, item.is_weighted);
 
       if (normalizedQuantity > Number(item.quantity)) {
         notifyStockLimit();

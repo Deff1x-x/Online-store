@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Pre-cutover logical backup. Credentials via env / .pgpass — not argv.
 # Usage: ./scripts/vps/backup-pre-cutover.sh /var/backups/koz
-set -euo pipefail
+set -Eeuo pipefail
 
 OUT_DIR="${1:-}"
 if [[ -z "$OUT_DIR" ]]; then

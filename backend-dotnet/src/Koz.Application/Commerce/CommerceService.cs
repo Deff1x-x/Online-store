@@ -6,7 +6,13 @@ public sealed class CommerceService(ICommerceRepository repository, TimeProvider
         var customer = await CustomerForUser(userId, ct); var period = Period(request.BillingPeriod); var amount = Amount(request.Amount); var expires = AddPeriod(time.GetUtcNow(), period);
         var result = await repository.CreateSubscriptionAsync(customer.Id, amount, period, expires, ct);
         if (result.AlreadyActive) throw new CommerceContractException(409, "Subscription is already active", "subscription_already_active");
-        return new(result.Subscription!, new(amount, "pending_provider_confirmation", 3, "first charge confirmed by provider webhook; recurring handled by provider token"));
+        return new(result.Subscription!, new(
+            amount,
+            "pending_provider_confirmation",
+            SubscriptionAccessRules.GraceDays,
+            "first charge confirmed by provider webhook; recurring handled by provider token",
+            SubscriptionAccessRules.PlaceholderProvider,
+            SubscriptionAccessRules.IssuePlaceholderToken(customer.Id)));
     }
     public async Task<SubscriptionResponse> RenewAsync(string customerId, CancellationToken ct) { var c = await CustomerById(customerId, ct); var period = c.LatestBillingPeriod ?? "monthly"; var basis = c.LatestExpiresAt is { } e && e > time.GetUtcNow() ? e : time.GetUtcNow(); return new(await repository.RenewAsync(c.Id, AddPeriod(basis, period), period, ct)); }
     public async Task<SubscriptionResponse> CancelAsync(string? userId, string? role, string customerId, CancelSubscriptionRequest request, CancellationToken ct) { var c = await CustomerById(customerId, ct); if (role != "admin_customers" && !(role == "customer" && c.UserId == userId)) throw new CommerceContractException(403, "Access denied", "access_denied"); var s = await repository.CancelAsync(c.Id, request.Immediate is true, ct); if (s is null) throw new CommerceContractException(404, "Active subscription was not found", "subscription_not_found"); return new(s); }

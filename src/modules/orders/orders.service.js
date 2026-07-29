@@ -31,6 +31,12 @@ const roundQuantity = (value) => Math.round((Number(value) + Number.EPSILON) * 1
 
 const isWholeNumber = (value) => Number.isInteger(Number(value));
 
+const isTenthKilogram = (value) => {
+  const normalized = roundQuantity(value);
+  const tenth = Math.round(normalized * 10) / 10;
+  return Math.abs(normalized - tenth) < 1e-9;
+};
+
 const toDateOnly = (date) => date.toISOString().slice(0, 10);
 
 const almatyNow = () => new Date(Date.now() + almatyUtcOffsetHours * 60 * 60 * 1000);
@@ -76,8 +82,11 @@ const ensureActiveSubscription = (customer) => {
 
   const today = toDateOnly(almatyNow());
   const subscriptionEnd = toDateOnly(new Date(customer.subscription_end_date));
+  // TZ А3: grace 3 days after paid period end
+  const graceDeadline = new Date(subscriptionEnd);
+  graceDeadline.setUTCDate(graceDeadline.getUTCDate() + 3);
 
-  if (subscriptionEnd < today) {
+  if (graceDeadline < today) {
     throw new AppError(403, 'Active subscription is required', 'subscription_required');
   }
 };
@@ -209,6 +218,10 @@ export const createOrder = async ({ user, body }) => {
 
       if (product.is_weighted !== true && !isWholeNumber(quantity)) {
         throw new AppError(400, 'Piece products require integer quantity', 'invalid_order_item_quantity');
+      }
+
+      if (product.is_weighted === true && !isTenthKilogram(quantity)) {
+        throw new AppError(400, 'Weighted products require 0.1 kg quantity step', 'invalid_order_item_quantity');
       }
 
       const reserved = await reserveInventory(client, {

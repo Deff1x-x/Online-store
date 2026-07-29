@@ -91,11 +91,11 @@ public sealed class DeploymentPackageContractTests
     }
 
     [Fact]
-    public void Env_template_locks_payment_disabled_and_requires_distinct_secrets()
+    public void Env_template_enables_payment_placeholder_and_requires_distinct_secrets()
     {
         var env = Read("deploy", "vps", ".env.production.example");
         Assert.Contains("ASPNETCORE_ENVIRONMENT=Production", env, StringComparison.Ordinal);
-        Assert.Contains("PAYMENTS_ONLINE_INITIATION_ENABLED=false", env, StringComparison.Ordinal);
+        Assert.Contains("PAYMENTS_ONLINE_INITIATION_ENABLED=true", env, StringComparison.Ordinal);
         Assert.Contains("JWT_SECRET=", env, StringComparison.Ordinal);
         Assert.Contains("OTP_SECRET=", env, StringComparison.Ordinal);
         Assert.Contains("JWT_SECRET must differ from OTP_SECRET", env, StringComparison.Ordinal);

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Restore a dump into a SEPARATE verification database (never overwrite prod blindly).
 # Usage: ./scripts/vps/restore-verify.sh /path/to/file.dump verify_db_name
-set -euo pipefail
+set -Eeuo pipefail
 
 DUMP="${1:-}"
 VERIFY_DB="${2:-}"
@@ -11,6 +11,10 @@ if [[ -z "$DUMP" || -z "$VERIFY_DB" ]]; then
 fi
 if [[ "$VERIFY_DB" == "${DATABASE_NAME:-}" ]]; then
   echo "Refuse to restore into DATABASE_NAME; use a dedicated verify DB." >&2
+  exit 2
+fi
+if ! [[ "$VERIFY_DB" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+  echo "Invalid database name: must be alphanumeric/underscore only." >&2
   exit 2
 fi
 

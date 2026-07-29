@@ -103,7 +103,7 @@ export function createManagerApi(client: ApiClient) {
     updateInventory: (productId: ManagerPathId, payload: ManagerInventoryUpdatePayload) =>
       client.put<ManagerInventoryItemResponse, ManagerInventoryUpdatePayload>(`/my-store/inventory/${productId}`, payload),
     receiveInventory: (productId: ManagerPathId, payload: { quantity: number }) =>
-      client.post<ManagerInventoryItemResponse, { quantity: number }>(`/my-store/inventory/${productId}/incoming`, payload),
+      client.put<ManagerInventoryItemResponse, { quantity: number }>(`/my-store/inventory/${productId}/receive`, payload),
     getAnalytics: (query?: ManagerAnalyticsQuery) => client.get<ManagerAnalyticsResponse>("/my-store/analytics", { query }),
   };
 }

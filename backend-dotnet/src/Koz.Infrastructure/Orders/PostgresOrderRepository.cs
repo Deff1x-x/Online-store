@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Koz.Application.Commerce;
 using Koz.Application.Orders;
 using Npgsql;
 
@@ -28,7 +29,7 @@ public sealed class PostgresOrderRepository(NpgsqlDataSource dataSource, TimePro
             var estimatedWeight = 0m;
             foreach (var item in request.Items!)
             {
-                var quantity = RoundQuantity(ToNodeNumber(item.Quantity));
+                var quantity = OrderQuantityRules.RoundQuantity(ToNodeNumber(item.Quantity));
                 if (string.IsNullOrEmpty(item.ProductId) || quantity <= 0m)
                 {
                     throw new OrderContractException(400, "Invalid order item quantity", "invalid_order_item_quantity");
@@ -45,9 +46,14 @@ public sealed class PostgresOrderRepository(NpgsqlDataSource dataSource, TimePro
                     throw new OrderContractException(400, "Product is not visible in store", "product_not_available");
                 }
 
-                if (!product.IsWeighted && decimal.Truncate(quantity) != quantity)
+                if (!product.IsWeighted && !OrderQuantityRules.IsValidPieceQuantity(quantity))
                 {
                     throw new OrderContractException(400, "Piece products require integer quantity", "invalid_order_item_quantity");
+                }
+
+                if (product.IsWeighted && !OrderQuantityRules.IsValidWeightedStep(quantity))
+                {
+                    throw new OrderContractException(400, "Weighted products require 0.1 kg quantity step", "invalid_order_item_quantity");
                 }
 
                 if (!await ReserveInventoryAsync(connection, transaction, product.InventoryId, quantity, cancellationToken))
@@ -59,7 +65,7 @@ public sealed class PostgresOrderRepository(NpgsqlDataSource dataSource, TimePro
                 var lineTotal = RoundMoney(quantity * price);
                 var itemWeight = product.IsWeighted ? quantity : 0m;
                 subtotal = RoundMoney(subtotal + lineTotal);
-                estimatedWeight = RoundQuantity(estimatedWeight + itemWeight);
+                estimatedWeight = OrderQuantityRules.RoundQuantity(estimatedWeight + itemWeight);
                 itemInputs.Add(new(product.ProductId, quantity, price, lineTotal, itemWeight));
             }
 
@@ -119,7 +125,8 @@ public sealed class PostgresOrderRepository(NpgsqlDataSource dataSource, TimePro
     private void EnsureActiveSubscription(CustomerRow? customer)
     {
         var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().AddHours(5).UtcDateTime);
-        if (customer is null || customer.SubscriptionStatus != "active" || customer.SubscriptionEndDate is null || customer.SubscriptionEndDate < today)
+        if (customer is null
+            || !SubscriptionAccessRules.AllowsOrdering(customer.SubscriptionStatus, customer.SubscriptionEndDate, today))
         {
             throw new OrderContractException(403, "Active subscription is required", "subscription_required");
         }
@@ -240,7 +247,6 @@ public sealed class PostgresOrderRepository(NpgsqlDataSource dataSource, TimePro
 
     private string OrderNumber() => $"ORD-{DateOnly.FromDateTime(timeProvider.GetUtcNow().AddHours(5).UtcDateTime):yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
     private static decimal RoundMoney(decimal value) => decimal.Round(value, 2, MidpointRounding.AwayFromZero);
-    private static decimal RoundQuantity(decimal value) => decimal.Round(value, 3, MidpointRounding.AwayFromZero);
 
     private static decimal ToNodeNumber(JsonElement value) => value.ValueKind switch
     {

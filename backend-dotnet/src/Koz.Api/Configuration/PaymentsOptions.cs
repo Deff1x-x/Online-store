@@ -4,8 +4,9 @@ using Microsoft.Extensions.Hosting;
 namespace Koz.Api.Configuration;
 
 /// <summary>
-/// Online payment initiation gate. Production defaults to disabled until a real provider
-/// contract exists (release condition R1). Non-production defaults to enabled for Node parity tests.
+/// Online payment initiation gate. TZ А5 requires a <b>placeholder</b> provider until an acquiring
+/// contract exists — initiation defaults to <c>enabled</c> in all environments (Node parity).
+/// Explicit <c>false</c> remains an operational kill-switch (returns 503).
 /// </summary>
 public sealed class PaymentsOptions
 {
@@ -15,6 +16,8 @@ public sealed class PaymentsOptions
 
     public static PaymentsOptions Load(IConfiguration configuration, IHostEnvironment environment)
     {
+        _ = environment;
+
         var raw = Environment.GetEnvironmentVariable("PAYMENTS_ONLINE_INITIATION_ENABLED")?.Trim()
             ?? configuration["Payments:OnlineInitiationEnabled"]?.Trim();
 
@@ -26,17 +29,11 @@ public sealed class PaymentsOptions
                     "PAYMENTS_ONLINE_INITIATION_ENABLED / Payments:OnlineInitiationEnabled must be true or false.");
             }
 
-            if (environment.IsProduction() && configured)
-            {
-                // Refuse enabling placeholder initiation in Production without an approved provider.
-                throw new PaymentsConfigurationException(
-                    "Online payment initiation cannot be enabled in Production until a real payment provider contract is configured.");
-            }
-
             return new PaymentsOptions(configured);
         }
 
-        return new PaymentsOptions(onlineInitiationEnabled: !environment.IsProduction());
+        // TZ: placeholder initiation until acquiring contract — default on.
+        return new PaymentsOptions(onlineInitiationEnabled: true);
     }
 }
 

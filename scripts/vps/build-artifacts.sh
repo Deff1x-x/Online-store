@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build images with immutable tag = git SHA (or KOZ_IMAGE_TAG).
-set -euo pipefail
+set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 TAG="${KOZ_IMAGE_TAG:-$(git rev-parse HEAD)}"

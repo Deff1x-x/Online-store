@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Full cutover sequence (operator-run on VPS). Refuses unless CUTOVER_CONFIRMED=yes.
-set -euo pipefail
+set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 if [[ "${CUTOVER_CONFIRMED:-}" != "yes" ]]; then

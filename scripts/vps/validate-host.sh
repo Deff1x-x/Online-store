@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Validate VPS host prerequisites (read-only checks).
-set -euo pipefail
+set -Eeuo pipefail
 
 fail=0
 need() {

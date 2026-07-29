@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Minimal observation window helpers (not a metrics platform).
 # Usage: ./observe.sh [seconds]
-set -euo pipefail
+set -Eeuo pipefail
 SECS="${1:-30}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT/deploy/vps"

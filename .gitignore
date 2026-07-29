@@ -12,3 +12,20 @@ backend-dotnet/**/artifacts/
 deploy/vps/nginx/tls/*.pem
 deploy/vps/nginx/tls/*.key
 !deploy/vps/nginx/tls/README.md
+
+# Test output
+test-results/
+playwright-report/
+
+# IDE / OS
+.idea/
+*.suo
+*.user
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Build / publish
+publish/
+*.tgz

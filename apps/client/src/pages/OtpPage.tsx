@@ -15,6 +15,7 @@ import {
   saveAuthFlow,
   type AuthFlow,
 } from "../auth/auth-flow";
+import { requestPaywall } from "../paywall/paywall-context";
 import { validateOtp } from "../auth/validation";
 
 const DEFAULT_STORE_ID = "11111111-1111-1111-1111-111111111111";
@@ -87,8 +88,12 @@ export function OtpPage() {
         }
       });
 
+      const intent = flow.intent;
       clearAuthFlow();
       navigate(flow.returnTo ?? "/shop", { replace: true });
+      if (intent === "register") {
+        requestPaywall();
+      }
     } catch (error) {
       if (error instanceof APIError && error.code === "consents_required") {
         showToast({

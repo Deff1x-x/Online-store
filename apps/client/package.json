@@ -6,11 +6,15 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite --host 0.0.0.0 --port 5173",
-    "preview": "vite preview --host 0.0.0.0 --port 4173"
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@koz/api": "0.1.0",
     "@koz/ui": "0.1.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
 }

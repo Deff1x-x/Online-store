@@ -158,8 +158,14 @@ export function CheckoutPage() {
       if (preauthAmount === undefined) {
         throw new Error("Backend did not return online payment amount");
       }
+      setLoadingLabel("Инициируем оплату");
+      const paymentInit = await modules.paymentsApi.payOrderOnline(orderResponse.order_id);
+      const widgetAmount = Number(paymentInit.payment.amount);
       setLoadingLabel("Открываем оплату");
-      await paymentProvider.init(preauthAmount, orderResponse.order_id);
+      await paymentProvider.init(
+        Number.isFinite(widgetAmount) ? widgetAmount : preauthAmount,
+        orderResponse.order_id,
+      );
 
       saveOrderResult({
         orderId: orderResponse.order_id,

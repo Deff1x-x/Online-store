@@ -12,6 +12,9 @@ public sealed class PublicReadService(IPublicReadRepository repository)
         return new StoreCatalogResponse(await repository.FindPublicStoreCatalogAsync(storeId, cancellationToken));
     }
 
+    public async Task<StoresResponse> ListStoresAsync(CancellationToken cancellationToken) =>
+        new(await repository.FindActiveStoresAsync(cancellationToken));
+
     public async Task<ProfileResponse> GetProfileAsync(string? userId, CancellationToken cancellationToken)
     {
         var profile = await repository.FindProfileByUserIdAsync(RequireUserId(userId), cancellationToken);

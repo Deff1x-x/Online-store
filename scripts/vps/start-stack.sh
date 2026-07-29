@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Start stack with .NET as default active upstream (public traffic still via Nginx).
 # Does NOT perform cutover decisions beyond bringing containers up.
-set -euo pipefail
+set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT/deploy/vps"
 [[ -f .env ]] || { echo "Missing deploy/vps/.env — copy .env.production.example" >&2; exit 2; }

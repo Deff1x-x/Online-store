@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Validate deploy/vps/.env without printing secret values.
-set -euo pipefail
+set -Eeuo pipefail
 
 ENV_FILE="${1:-}"
 if [[ -z "$ENV_FILE" ]]; then
@@ -33,7 +33,11 @@ for k in ASPNETCORE_ENVIRONMENT DATABASE_HOST DATABASE_PORT DATABASE_NAME DATABA
 done
 
 [[ "${ASPNETCORE_ENVIRONMENT}" == "Production" ]] || { echo "FAIL:ASPNETCORE_ENVIRONMENT must be Production" >&2; fail=1; }
-[[ "${PAYMENTS_ONLINE_INITIATION_ENABLED:-false}" == "false" ]] || { echo "FAIL:payment must be disabled for launch" >&2; fail=1; }
+# TZ А5: placeholder initiation enabled by default; false is an explicit kill-switch only.
+case "${PAYMENTS_ONLINE_INITIATION_ENABLED:-true}" in
+  true|false) ;;
+  *) echo "FAIL:PAYMENTS_ONLINE_INITIATION_ENABLED must be true or false" >&2; fail=1 ;;
+esac
 [[ "${DATABASE_PASSWORD}" != "postgres" ]] || { echo "FAIL:DATABASE_PASSWORD must not be postgres" >&2; fail=1; }
 [[ "${#JWT_SECRET}" -ge 32 ]] || { echo "FAIL:JWT_SECRET too short" >&2; fail=1; }
 [[ "${#OTP_SECRET}" -ge 32 ]] || { echo "FAIL:OTP_SECRET too short" >&2; fail=1; }

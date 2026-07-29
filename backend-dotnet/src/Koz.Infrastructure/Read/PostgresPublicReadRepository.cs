@@ -52,6 +52,31 @@ public sealed class PostgresPublicReadRepository(NpgsqlDataSource dataSource) : 
         return products;
     }
 
+    public async Task<IReadOnlyList<PublicStoreListItem>> FindActiveStoresAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var command = new NpgsqlCommand(
+            """
+            SELECT id, name, address, status
+            FROM stores
+            WHERE status = 'active'
+            ORDER BY name ASC
+            """,
+            connection);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var stores = new List<PublicStoreListItem>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            stores.Add(new PublicStoreListItem(
+                reader.GetGuid(0).ToString(),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.GetString(3)));
+        }
+
+        return stores;
+    }
+
     public async Task<CustomerProfile?> FindProfileByUserIdAsync(string userId, CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);

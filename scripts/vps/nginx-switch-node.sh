@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Switch Nginx active upstream to Node (rollback). Safe reload. No DB schema changes.
-set -euo pipefail
+set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 ACTIVE="$ROOT/deploy/vps/nginx/conf.d/active-upstream.conf"
 cat > "$ACTIVE" <<'EOF'

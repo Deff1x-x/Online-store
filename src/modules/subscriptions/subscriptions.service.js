@@ -50,10 +50,12 @@ const normalizeAmount = (amount) => {
   return numericAmount;
 };
 
-const paymentPayload = (amount) => ({
+const paymentPayload = (amount, customerId) => ({
   amount,
   status: 'pending_provider_confirmation',
   grace_days: 3,
+  provider: 'kaspi_placeholder',
+  provider_token: `placeholder-recurring:${customerId}`,
   note: 'first charge confirmed by provider webhook; recurring handled by provider token',
 });
 
@@ -81,7 +83,7 @@ export const createSubscription = async ({ user, body }) => {
 
   return {
     subscription: result.subscription,
-    payment: paymentPayload(amount),
+    payment: paymentPayload(amount, customer.id),
   };
 };
 

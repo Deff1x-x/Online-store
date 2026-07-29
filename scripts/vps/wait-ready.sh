@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Wait for container readiness with timeout.
 # Usage: ./wait-ready.sh <service> <url-path> [timeout_sec]
-set -euo pipefail
+set -Eeuo pipefail
 SERVICE="${1:?service}"
 PATH_SUFFIX="${2:?path}"
 TIMEOUT="${3:-90}"

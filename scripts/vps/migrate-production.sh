@@ -3,7 +3,7 @@
 # Usage:
 #   BACKUP_CONFIRMED=yes ./scripts/vps/migrate-production.sh
 # Requires: psql, env DATABASE_HOST/PORT/NAME/USER/PASSWORD (or PGPASSWORD via .pgpass / env file sourced by operator).
-set -euo pipefail
+set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 MIGRATIONS_DIR="$ROOT/database/migrations"

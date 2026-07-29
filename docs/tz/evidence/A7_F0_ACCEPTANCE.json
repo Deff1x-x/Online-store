@@ -1,0 +1,62 @@
+{
+  "ok": true,
+  "run_id": "f5d4aa00-4b27-480c-9799-b50727834d90",
+  "api": "http://127.0.0.1:3000/api",
+  "criteria": [
+    {
+      "id": "A7-1",
+      "title": "Гостевая витрина без токена",
+      "result": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "A7-2",
+      "title": "OTP-регистрация с согласиями",
+      "result": "PASS",
+      "detail": "status=201"
+    },
+    {
+      "id": "A7-3",
+      "title": "Подписка 3900 + дубль 409; payment placeholder + grace_days=3",
+      "result": "PASS",
+      "detail": "sub=201 dup=409 payment={\"amount\":3900,\"status\":\"pending_provider_confirmation\",\"grace_days\":3,\"provider\":\"kaspi_placeholder\",\"provider_token\":\"placeholder-recurring:87ecbe8b-01b1-4248-9bf3-0bbbac8f9c2d\",\"note\":\"first charge confirmed by provider webhook; recurring handled by provider token\"}"
+    },
+    {
+      "id": "A7-4",
+      "title": "Заказ весовой 1,5 + штучный; доставка +500 ниже порога; холд 80%",
+      "result": "PASS",
+      "detail": "status=201 delivery=500 preauth=400 final=500"
+    },
+    {
+      "id": "A7-5",
+      "title": "Остаток списался после создания заказа",
+      "result": "PASS",
+      "detail": "before=8.5 after=7"
+    },
+    {
+      "id": "A7-6",
+      "title": "pick → actual-weight partial capture (capture ≤ hold)",
+      "result": "PASS",
+      "detail": "capture=400 hold=400"
+    },
+    {
+      "id": "A7-7",
+      "title": "delivered → fully_paid + pos_terminal path",
+      "result": "PASS",
+      "detail": "status=200 payment=fully_paid"
+    },
+    {
+      "id": "A7-8",
+      "title": "Отмена нового заказа → остаток вернулся",
+      "result": "PASS",
+      "detail": "cancel=200 milk 413→414"
+    },
+    {
+      "id": "A7-9",
+      "title": "Отчёт точки (GMV онлайн + ПОС)",
+      "result": "PASS",
+      "detail": "status=200 bodyKeys=store,subscribers,orders"
+    }
+  ],
+  "order_id": "ef90c6a8-8c6a-4c4f-bf98-a06f5c84b7fb"
+}

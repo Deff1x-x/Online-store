@@ -22,6 +22,14 @@ public sealed record StoreCatalogProduct(
 
 public sealed record StoreCatalogResponse(IReadOnlyList<StoreCatalogProduct> Products);
 
+public sealed record PublicStoreListItem(
+    string Id,
+    string Name,
+    string Address,
+    string Status);
+
+public sealed record StoresResponse(IReadOnlyList<PublicStoreListItem> Stores);
+
 public sealed record ProfileUser(string Id, string? Name, string Phone, string? Email);
 
 public sealed record ProfileCustomer(
