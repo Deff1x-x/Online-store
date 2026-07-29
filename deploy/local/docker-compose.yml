@@ -1,0 +1,67 @@
+# Local development stack (NOT for production).
+# Usage from repository root:
+#   docker compose -f deploy/local/docker-compose.yml up --build
+#
+# Provides: PostgreSQL 16 (schema + migrations + seed) and Node API.
+# Frontends run on the host: npm run dev --workspace=@koz/client|@koz/staff
+#
+# Host port 5433 avoids conflict with a local PostgreSQL already on 5432.
+# Inside the Compose network the DB is still postgres:5432.
+
+name: koz-local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: online_store
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - koz_local_pgdata:/var/lib/postgresql/data
+      - ../../database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ../../database/migrations/001_standardize_user_roles.sql:/docker-entrypoint-initdb.d/02_001.sql:ro
+      - ../../database/migrations/002_expand_core_schema.sql:/docker-entrypoint-initdb.d/03_002.sql:ro
+      - ../../database/migrations/003_otp_challenges.sql:/docker-entrypoint-initdb.d/04_003.sql:ro
+      - ../../database/seed.sql:/docker-entrypoint-initdb.d/05_seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d online_store"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+  node-api:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.node
+    image: koz-node:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Override image default Production so local DB password `postgres` is allowed.
+      NODE_ENV: development
+      PORT: "3000"
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: online_store
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      JWT_SECRET: development-only-jwt-secret-do-not-use-in-production
+      CORS_ORIGINS: http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 25s
+
+volumes:
+  koz_local_pgdata:
