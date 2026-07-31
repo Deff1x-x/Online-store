@@ -1,7 +1,7 @@
 {
   "name": "multi-tenant-ecommerce-backend",
   "version": "1.0.0",
-  "description": "Node.js Express backend for a multi-tenant e-commerce platform.",
+  "description": "KOZ multi-tenant e-commerce monorepo. Default local backend is ASP.NET Core; Node remains for legacy/parity.",
   "private": true,
   "type": "module",
   "main": "src/server.js",
@@ -16,14 +16,18 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
+    "dev": "node scripts/local/dev.mjs",
+    "dev:api": "node scripts/local/dev-api.mjs",
+    "dev:client": "npm run dev --workspace=@koz/client",
+    "dev:staff": "npm run dev --workspace=@koz/staff",
+    "dev:node": "node --watch src/server.js",
+    "dev:parity": "node scripts/local/dev-parity.mjs",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "test:b7-browser": "node scripts/tz/b7-browser.mjs",
+    "db:setup": "node scripts/local/run-setup-db.mjs",
     "db:schema": "psql -f database/schema.sql",
-    "db:seed": "psql -f database/seed.sql",
-    "dev:client": "npm run dev --workspace=@koz/client",
-    "dev:staff": "npm run dev --workspace=@koz/staff"
+    "db:seed": "psql -f database/seed.sql"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

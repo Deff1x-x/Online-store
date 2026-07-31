@@ -1,10 +1,12 @@
 /**
- * TZ Б7 / А7 automated acceptance against a running Node backend (default :3000).
+ * TZ Б7 / А7 automated acceptance against a running product API (default ASP.NET Core :5000).
  * Does not switch production traffic. Uses seeded store 11111111-… and coverage 22222222-….
+ * Node :3000 only with KOZ_E2E_ALLOW_NODE=1 (parity/legacy).
  */
 import { randomUUID } from "crypto";
+import { resolveProductApiBase } from "../local/assert-dotnet-api-url.mjs";
 
-const BASE = process.env.KOZ_E2E_API_URL ?? "http://127.0.0.1:3000/api";
+const BASE = resolveProductApiBase("http://127.0.0.1:5000/api");
 const STORE_ID = "11111111-1111-1111-1111-111111111111";
 const COVERAGE_ID = "22222222-2222-2222-2222-222222222222";
 

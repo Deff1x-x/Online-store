@@ -1,4 +1,4 @@
-export const DEFAULT_API_BASE_URL = "http://localhost:3000/api";
+export const DEFAULT_API_BASE_URL = "http://localhost:5000/api";
 export const DEFAULT_APP_NAME = "KOZ";
 export const DEFAULT_ENV = "development";
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15000;

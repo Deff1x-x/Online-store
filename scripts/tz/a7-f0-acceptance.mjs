@@ -1,13 +1,15 @@
 /**
  * TZ А7 / Ф-0 backend acceptance (= RUN_LOCAL.md checklist).
- * Runs against a live API (default Node :3000). Writes machine-readable result JSON.
+ * Runs against a live product API (default ASP.NET Core :5000). Writes machine-readable result JSON.
+ * Node :3000 only with KOZ_E2E_ALLOW_NODE=1 (parity/legacy).
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
+import { resolveProductApiBase } from "../local/assert-dotnet-api-url.mjs";
 
-const BASE = process.env.KOZ_E2E_API_URL ?? "http://127.0.0.1:3000/api";
+const BASE = resolveProductApiBase("http://127.0.0.1:5000/api");
 const STORE_ID = "11111111-1111-1111-1111-111111111111";
 const COVERAGE_ID = "22222222-2222-2222-2222-222222222222";
 const HERE = dirname(fileURLToPath(import.meta.url));

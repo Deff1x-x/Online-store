@@ -1,7 +1,7 @@
 {
   "ok": true,
-  "run_id": "f5d4aa00-4b27-480c-9799-b50727834d90",
-  "api": "http://127.0.0.1:3000/api",
+  "run_id": "81175a75-64a5-4bdc-8b05-d92df4505ec0",
+  "api": "http://127.0.0.1:5000/api",
   "criteria": [
     {
       "id": "A7-1",
@@ -19,7 +19,7 @@
       "id": "A7-3",
       "title": "Подписка 3900 + дубль 409; payment placeholder + grace_days=3",
       "result": "PASS",
-      "detail": "sub=201 dup=409 payment={\"amount\":3900,\"status\":\"pending_provider_confirmation\",\"grace_days\":3,\"provider\":\"kaspi_placeholder\",\"provider_token\":\"placeholder-recurring:87ecbe8b-01b1-4248-9bf3-0bbbac8f9c2d\",\"note\":\"first charge confirmed by provider webhook; recurring handled by provider token\"}"
+      "detail": "sub=201 dup=409 payment={\"amount\":3900,\"status\":\"pending_provider_confirmation\",\"grace_days\":3,\"note\":\"first charge confirmed by provider webhook; recurring handled by provider token\",\"provider\":\"kaspi_placeholder\",\"provider_token\":\"placeholder-recurring:5ddb6cd2-f553-40cb-9075-333babe05612\"}"
     },
     {
       "id": "A7-4",
@@ -31,7 +31,7 @@
       "id": "A7-5",
       "title": "Остаток списался после создания заказа",
       "result": "PASS",
-      "detail": "before=8.5 after=7"
+      "detail": "before=31 after=29.5"
     },
     {
       "id": "A7-6",
@@ -49,7 +49,7 @@
       "id": "A7-8",
       "title": "Отмена нового заказа → остаток вернулся",
       "result": "PASS",
-      "detail": "cancel=200 milk 413→414"
+      "detail": "cancel=200 milk 15→16"
     },
     {
       "id": "A7-9",
@@ -58,5 +58,5 @@
       "detail": "status=200 bodyKeys=store,subscribers,orders"
     }
   ],
-  "order_id": "ef90c6a8-8c6a-4c4f-bf98-a06f5c84b7fb"
+  "order_id": "95b112d9-8ff7-40c7-a94e-25c1fe7b8480"
 }

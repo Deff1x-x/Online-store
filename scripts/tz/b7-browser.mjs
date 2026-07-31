@@ -1,6 +1,6 @@
 /**
  * TZ B7 browser acceptance — two Playwright contexts (client @5173 + staff @5174)
- * against API http://127.0.0.1:3000/api (must already be running with seed data).
+ * against ASP.NET Core http://127.0.0.1:5000/api by default (must already be running with seed data).
  *
  * Usage:
  *   node scripts/tz/b7-browser.mjs
@@ -9,20 +9,22 @@
  *   B7_SKIP_SERVE=1          — do not start Vite dev servers (assume already up)
  *   B7_EVIDENCE_DIR          — screenshot output directory
  *   B7_CLIENT_URL / B7_STAFF_URL
+ *   KOZ_E2E_API_URL          — override API (Node requires KOZ_E2E_ALLOW_NODE=1)
  */
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveProductApiBase } from "../local/assert-dotnet-api-url.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const API_BASE = process.env.KOZ_E2E_API_URL ?? "http://127.0.0.1:3000/api";
+const API_BASE = resolveProductApiBase("http://127.0.0.1:5000/api");
 const CLIENT_URL = process.env.B7_CLIENT_URL ?? "http://127.0.0.1:5173";
 const STAFF_URL = process.env.B7_STAFF_URL ?? "http://127.0.0.1:5174";
 const EVIDENCE_DIR =
   process.env.B7_EVIDENCE_DIR ?? path.join(root, "docs", "tz", "evidence", "b7-browser");
 const VITE_ENV = {
-  VITE_API_URL: "http://127.0.0.1:3000/api",
+  VITE_API_URL: API_BASE,
   VITE_STORE_ID: "11111111-1111-1111-1111-111111111111",
 };
 

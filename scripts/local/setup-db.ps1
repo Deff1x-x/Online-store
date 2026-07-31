@@ -50,6 +50,13 @@ function Invoke-Psql {
   }
 }
 
+Write-Host "Checking PostgreSQL connection on ${HostName}:$Port ..."
+try {
+  Invoke-Psql @("-d", "postgres", "-c", "SELECT 1;") | Out-Null
+} catch {
+  throw "Cannot connect to PostgreSQL on ${HostName}:$Port. Start Postgres or fix DATABASE_* env. $_"
+}
+
 Write-Host "Recreating database $Database on ${HostName}:$Port ..."
 Invoke-Psql @("-d", "postgres", "-c", "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='$Database' AND pid <> pg_backend_pid();") | Out-Null
 Invoke-Psql @("-d", "postgres", "-c", "DROP DATABASE IF EXISTS `"$Database`";")

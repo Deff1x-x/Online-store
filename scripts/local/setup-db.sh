@@ -13,6 +13,12 @@ export PGPASSWORD="$DATABASE_PASSWORD"
 
 PSQL=(psql -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USER" -v ON_ERROR_STOP=1)
 
+echo "Checking PostgreSQL connection on $DATABASE_HOST:$DATABASE_PORT ..."
+if ! "${PSQL[@]}" -d postgres -c "SELECT 1;" >/dev/null; then
+  echo "Cannot connect to PostgreSQL on $DATABASE_HOST:$DATABASE_PORT. Start Postgres or fix DATABASE_* env." >&2
+  exit 1
+fi
+
 echo "Recreating database $DATABASE_NAME on $DATABASE_HOST:$DATABASE_PORT ..."
 "${PSQL[@]}" -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='$DATABASE_NAME' AND pid <> pg_backend_pid();" >/dev/null || true
 "${PSQL[@]}" -d postgres -c "DROP DATABASE IF EXISTS \"$DATABASE_NAME\";"

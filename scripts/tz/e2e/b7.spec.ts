@@ -4,7 +4,12 @@ import { expect, test, type Page } from "@playwright/test";
 
 const CLIENT_BASE = process.env.B7_CLIENT_URL ?? "http://127.0.0.1:5173";
 const STAFF_BASE = process.env.B7_STAFF_URL ?? "http://127.0.0.1:5174";
-const API_BASE = process.env.B7_API_URL ?? "http://127.0.0.1:3000/api";
+const API_BASE = process.env.B7_API_URL ?? process.env.KOZ_E2E_API_URL ?? "http://127.0.0.1:5000/api";
+if (API_BASE.includes(":3000") && process.env.KOZ_E2E_ALLOW_NODE !== "1") {
+  throw new Error(
+    `B7 Playwright must target .NET (:5000), got ${API_BASE}. Set KOZ_E2E_ALLOW_NODE=1 only for Node parity.`,
+  );
+}
 const STORE_ID = "11111111-1111-1111-1111-111111111111";
 const EVIDENCE_DIR =
   process.env.B7_EVIDENCE_DIR ?? path.join("docs", "tz", "evidence", "b7-browser");

@@ -2,11 +2,16 @@
 # Usage from repository root:
 #   docker compose -f deploy/local/docker-compose.yml up --build
 #
-# Provides: PostgreSQL 16 (schema + migrations + seed) and Node API.
-# Frontends run on the host: npm run dev --workspace=@koz/client|@koz/staff
+# Default: PostgreSQL 16 (schema + migrations + seed) + ASP.NET Core API.
+# Legacy Node API (parity/rollback only):
+#   docker compose -f deploy/local/docker-compose.yml --profile legacy up --build
+#
+# Frontends run on the host: npm run dev:client / npm run dev:staff
+# (or npm run dev for the full host stack with .NET).
 #
 # Host port 5433 avoids conflict with a local PostgreSQL already on 5432.
 # Inside the Compose network the DB is still postgres:5432.
+# .NET listens on container :8080 and is published as host :5000.
 
 name: koz-local
 
@@ -34,7 +39,42 @@ services:
       retries: 10
       start_period: 15s
 
+  dotnet-api:
+    build:
+      context: ../../backend-dotnet
+      dockerfile: Dockerfile
+    image: koz-api:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Local-safe Development contract (Production validation remains strict in other stacks).
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: online_store
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      JWT_SECRET: development-only-jwt-secret-do-not-use-in-production
+      OTP_SECRET: development-only-otp-hmac-secret-do-not-use-in-production
+      Cors__AllowedOrigins__0: http://localhost:5173
+      Cors__AllowedOrigins__1: http://localhost:5174
+      Cors__AllowedOrigins__2: http://127.0.0.1:5173
+      Cors__AllowedOrigins__3: http://127.0.0.1:5174
+    ports:
+      - "5000:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 25s
+
+  # Explicit legacy/parity only — not started by default.
   node-api:
+    profiles: ["legacy"]
     build:
       context: ../..
       dockerfile: Dockerfile.node
@@ -44,7 +84,6 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      # Override image default Production so local DB password `postgres` is allowed.
       NODE_ENV: development
       PORT: "3000"
       DATABASE_HOST: postgres

@@ -118,6 +118,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -139,29 +144,50 @@ jobs:
             psql -h localhost -U koz_ci -d koz_acceptance -v ON_ERROR_STOP=1 -f database/seed.sql
           fi
 
-      - name: Start Node API
+      - name: Publish .NET API
+        run: dotnet publish backend-dotnet/src/Koz.Api/Koz.Api.csproj -c Release -o /tmp/koz-api /p:UseAppHost=false
+
+      - name: Start .NET API
         env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_URLS: http://127.0.0.1:5000
           DATABASE_HOST: localhost
           DATABASE_PORT: "5432"
           DATABASE_NAME: koz_acceptance
           DATABASE_USER: koz_ci
           DATABASE_PASSWORD: ci_test_password_not_real
           JWT_SECRET: ci-only-jwt-secret-not-for-production-use-32chars
-          NODE_ENV: development
-          PORT: "3000"
+          OTP_SECRET: ci-only-otp-hmac-secret-not-for-production-32c
+          Cors__AllowedOrigins__0: http://localhost:5173
+          Cors__AllowedOrigins__1: http://localhost:5174
         run: |
-          node src/server.js &
-          sleep 3
-          curl -fsS http://127.0.0.1:3000/api/health
+          dotnet /tmp/koz-api/Koz.Api.dll &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5000/api/health >/dev/null; then
+              echo "dotnet_api_ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "dotnet_api_failed_to_start" >&2
+          exit 1
+
+      - name: Assert product API is .NET :5000
+        run: |
+          curl -fsS http://127.0.0.1:5000/api/health
+          if curl -fsS http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+            echo "Node must not be the acceptance target" >&2
+            exit 1
+          fi
 
       - name: A7 acceptance
         env:
-          KOZ_E2E_API_URL: http://127.0.0.1:3000/api
+          KOZ_E2E_API_URL: http://127.0.0.1:5000/api
         run: node scripts/tz/a7-f0-acceptance.mjs
 
       - name: B7 API acceptance
         env:
-          KOZ_E2E_API_URL: http://127.0.0.1:3000/api
+          KOZ_E2E_API_URL: http://127.0.0.1:5000/api
         run: node scripts/tz/b7-acceptance.mjs
 
   docker:
@@ -171,13 +197,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Validate Compose config
-        run: docker compose -f deploy/vps/docker-compose.yml config --quiet
+        run: |
+          docker compose -f deploy/vps/docker-compose.yml config --quiet
+          docker compose -f deploy/local/docker-compose.yml config --quiet
 
       - name: Build .NET image
         run: docker build -f backend-dotnet/Dockerfile -t koz-api:ci backend-dotnet
 
       - name: Build Node image
         run: docker build -f Dockerfile.node -t koz-node:ci .
+
 
   checks:
     name: Repository checks

@@ -96,9 +96,9 @@ dotnet run --project backend-dotnet/src/Koz.Api/Koz.Api.csproj
 Invoke-RestMethod http://localhost:5000/api/health
 ```
 
-The local launch profile binds the .NET API to `http://localhost:5000`; Node remains on `http://localhost:3000`. Start Node in one terminal (`npm.cmd start`) and the .NET API in another. Do not point either Vite app at port 5000 in NET-1.
+The local launch profile binds the .NET API to `http://localhost:5000`. Local Vite apps default to `VITE_API_URL=http://localhost:5000/api`. Node remains on `http://localhost:3000` only for explicit legacy/parity (`npm run dev:node` / `npm run dev:parity`).
 
-Swagger UI is available only in Development at `http://localhost:5000/swagger`; it is an aid, not the contract source. The mounted .NET surface currently includes health, NET-1 Auth, NET-2A reads and NET-2B commerce endpoints.
+Swagger UI is available only in Development at `http://localhost:5000/swagger`; it is an aid, not the contract source.
 
 ## Auth smoke checks (NET-1)
 
